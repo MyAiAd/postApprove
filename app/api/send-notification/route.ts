@@ -60,7 +60,7 @@ You can view the full details at: ${process.env.NEXT_PUBLIC_APP_URL || 'your-app
 
     // Send email using Resend
     const { data, error: emailError } = await resend.emails.send({
-      from: 'AdApprove <onboarding@resend.dev>', // Using Resend's default domain for testing
+      from: 'AdApprove <noreply@msgs.myai.ad>', // Using your verified domain
       to: [process.env.ADMIN_EMAIL || 'Sage@MyAi.ad'],
       subject: `Campaign "${campaignName}" - Client Review Complete`,
       text: emailContent,
