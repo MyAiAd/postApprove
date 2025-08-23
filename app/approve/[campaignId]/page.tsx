@@ -20,6 +20,7 @@ export default function ApprovePage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
+  const [submitted, setSubmitted] = useState(false)
 
   useEffect(() => {
     if (campaignId) {
@@ -136,6 +137,7 @@ export default function ApprovePage() {
       }
 
       setMessage('Thank you! Your approvals have been submitted and the team has been notified.')
+      setSubmitted(true)
       
       // Reload data to show updated state
       loadCampaignData()
@@ -154,6 +156,36 @@ export default function ApprovePage() {
 
   if (!campaign) {
     return <div className="error">Campaign not found.</div>
+  }
+
+  // Show thank you page after submission
+  if (submitted) {
+    return (
+      <div className="container">
+        <div className="thank-you-page">
+          <div className="thank-you-content">
+            <h1 className="thank-you-title">Thank You!</h1>
+            <div className="thank-you-icon">✅</div>
+            <h2 className="thank-you-subtitle">Your review has been submitted</h2>
+            <p className="thank-you-message">
+              We've received your feedback on the <strong>{campaign.name}</strong> campaign. 
+              The team has been notified and will review your responses.
+            </p>
+            <div className="thank-you-summary">
+              <p>Review Summary:</p>
+              <ul>
+                <li>Total images reviewed: {images.length}</li>
+                <li>Images approved: {images.filter(img => approvals[img.id]?.approved === true).length}</li>
+                <li>Images requiring changes: {images.filter(img => approvals[img.id]?.approved === false).length}</li>
+              </ul>
+            </div>
+            <p className="thank-you-footer">
+              You can now close this page. We'll be in touch soon!
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
