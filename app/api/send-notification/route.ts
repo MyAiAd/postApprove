@@ -1,0 +1,73 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { Resend } from 'resend'
+import { supabase } from '@/lib/supabase'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+export async function POST(request: NextRequest) {
+  try {
+    const { campaignId, campaignName } = await request.json()
+
+    if (!campaignId || !campaignName) {
+      return NextResponse.json(
+        { error: 'Campaign ID and name are required' },
+        { status: 400 }
+      )
+    }
+
+    // Get campaign images with approval status
+    const { data: images, error: imagesError } = await supabase
+      .from('images')
+      .select('*')
+      .eq('campaign_id', campaignId)
+
+    if (imagesError) {
+      throw new Error(`Failed to fetch images: ${imagesError.message}`)
+    }
+
+    // Count approvals and disapprovals
+    const approved = images.filter(img => img.approved === true).length
+    const disapproved = images.filter(img => img.approved === false).length
+    const total = images.length
+
+    // Get disapproved images with comments
+    const disapprovedWithComments = images
+      .filter(img => img.approved === false && img.comments)
+      .map(img => `• ${img.filename}: ${img.comments}`)
+      .join('\n')
+
+    const emailContent = `
+Campaign "${campaignName}" has been reviewed by the client.
+
+Results:
+- Total images: ${total}
+- Approved: ${approved}
+- Disapproved: ${disapproved}
+
+${disapprovedWithComments ? `\nComments on disapproved images:\n${disapprovedWithComments}` : ''}
+
+You can view the full details at: ${process.env.NEXT_PUBLIC_APP_URL || 'your-app-url'}/approve/${campaignId}
+`
+
+    // Send email using Resend
+    const { error: emailError } = await resend.emails.send({
+      from: 'AdApprove <noreply@yourdomain.com>', // Replace with your verified domain
+      to: [process.env.ADMIN_EMAIL || 'Sage@MyAi.ad'],
+      subject: `Campaign "${campaignName}" - Client Review Complete`,
+      text: emailContent,
+    })
+
+    if (emailError) {
+      throw new Error(`Failed to send email: ${emailError.message}`)
+    }
+
+    return NextResponse.json({ success: true })
+
+  } catch (error: any) {
+    console.error('Error sending notification:', error)
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    )
+  }
+} 
