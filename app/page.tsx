@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState, useEffect } from 'react'
+import { supabase, Campaign } from '@/lib/supabase'
 import { v4 as uuidv4 } from 'uuid'
 
 export default function UploadPage() {
@@ -11,6 +11,74 @@ export default function UploadPage() {
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
   const [campaignId, setCampaignId] = useState<string | null>(null)
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [loadingCampaigns, setLoadingCampaigns] = useState(true)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadCampaigns()
+  }, [])
+
+  const loadCampaigns = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setCampaigns(data)
+    } catch (error: any) {
+      console.error('Error loading campaigns:', error)
+    } finally {
+      setLoadingCampaigns(false)
+    }
+  }
+
+  const deleteCampaign = async (campaignToDelete: Campaign) => {
+    if (!confirm(`Are you sure you want to delete the campaign "${campaignToDelete.name}"? This will also delete all associated images and cannot be undone.`)) {
+      return
+    }
+
+    setDeleting(campaignToDelete.id)
+
+    try {
+      // Delete all images from storage first
+      const { data: images } = await supabase
+        .from('images')
+        .select('url')
+        .eq('campaign_id', campaignToDelete.id)
+
+      if (images) {
+        const deletePromises = images.map(async (image) => {
+          const filePath = image.url.split('/').pop() // Extract file path from URL
+          if (filePath) {
+            await supabase.storage
+              .from('images')
+              .remove([`${campaignToDelete.id}/${filePath}`])
+          }
+        })
+        await Promise.all(deletePromises)
+      }
+
+      // Delete campaign (this will cascade delete images due to foreign key)
+      const { error } = await supabase
+        .from('campaigns')
+        .delete()
+        .eq('id', campaignToDelete.id)
+
+      if (error) throw error
+
+      setMessage('Campaign deleted successfully!')
+      loadCampaigns() // Reload campaigns list
+
+    } catch (error: any) {
+      console.error('Error deleting campaign:', error)
+      setMessage(`Error deleting campaign: ${error.message}`)
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -85,6 +153,9 @@ export default function UploadPage() {
       const fileInput = document.getElementById('files') as HTMLInputElement
       if (fileInput) fileInput.value = ''
 
+      // Reload campaigns list
+      loadCampaigns()
+
     } catch (error: any) {
       console.error('Error:', error)
       setMessage(`Error: ${error.message}`)
@@ -114,7 +185,49 @@ export default function UploadPage() {
         </div>
       )}
 
+      {/* Existing Campaigns Section */}
+      <div className="upload-form">
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+          Existing Campaigns
+        </h2>
+        
+        {loadingCampaigns ? (
+          <div className="loading">Loading campaigns...</div>
+        ) : campaigns.length === 0 ? (
+          <p style={{ color: '#6b7280' }}>No campaigns yet.</p>
+        ) : (
+          <div className="campaigns-list">
+            {campaigns.map((campaign) => (
+              <div key={campaign.id} className="campaign-item">
+                <div className="campaign-info">
+                  <h3>{campaign.name}</h3>
+                  <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                    Created: {new Date(campaign.created_at).toLocaleDateString()}
+                  </p>
+                  <p style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                    {campaign.instructions}
+                  </p>
+                  <p style={{ color: '#3b82f6', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                    Approval URL: {window.location.origin}/approve/{campaign.id}
+                  </p>
+                </div>
+                <button
+                  onClick={() => deleteCampaign(campaign)}
+                  disabled={deleting === campaign.id}
+                  className="delete-btn"
+                >
+                  {deleting === campaign.id ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <form onSubmit={handleSubmit} className="upload-form">
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+          Create New Campaign
+        </h2>
         <div className="form-group">
           <label htmlFor="campaignName">Campaign Name:</label>
           <input

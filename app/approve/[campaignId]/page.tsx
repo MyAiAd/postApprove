@@ -216,7 +216,7 @@ export default function ApprovePage() {
           className="btn" 
           disabled={!allImagesReviewed() || submitting}
         >
-          {submitting ? 'Submitting...' : 'Submit All Approvals'}
+          {submitting ? 'Submitting...' : 'Submit All'}
         </button>
         {!allImagesReviewed() && (
           <p style={{ marginTop: '1rem', color: '#6b7280' }}>
