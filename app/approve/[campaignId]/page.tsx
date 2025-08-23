@@ -174,28 +174,28 @@ export default function ApprovePage() {
           <div key={image.id} className="image-card">
             <img src={image.url} alt={image.filename} />
             <div className="image-controls">
-              <div className="radio-group">
-                <label className="radio-option">
-                  <input
-                    type="radio"
-                    name={`approval-${image.id}`}
-                    value="yes"
-                    checked={approvals[image.id]?.approved === true}
-                    onChange={() => handleApprovalChange(image.id, true)}
-                  />
-                  Yes
-                </label>
-                <label className="radio-option">
-                  <input
-                    type="radio"
-                    name={`approval-${image.id}`}
-                    value="no"
-                    checked={approvals[image.id]?.approved === false}
-                    onChange={() => handleApprovalChange(image.id, false)}
-                  />
-                  No
-                </label>
-              </div>
+                             <div className="radio-group">
+                 <label className="radio-option">
+                   <input
+                     type="radio"
+                     name={`approval-${image.id}`}
+                     value="approve"
+                     checked={approvals[image.id]?.approved === true}
+                     onChange={() => handleApprovalChange(image.id, true)}
+                   />
+                   Approve
+                 </label>
+                 <label className="radio-option">
+                   <input
+                     type="radio"
+                     name={`approval-${image.id}`}
+                     value="disapprove"
+                     checked={approvals[image.id]?.approved === false}
+                     onChange={() => handleApprovalChange(image.id, false)}
+                   />
+                   Disapprove
+                 </label>
+               </div>
               
               {approvals[image.id]?.approved === false && (
                 <textarea
