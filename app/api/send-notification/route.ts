@@ -72,6 +72,20 @@ You can view the full details at: ${process.env.NEXT_PUBLIC_APP_URL || 'your-app
       throw new Error(`Failed to send email: ${emailError.message}`)
     }
 
+    // Mark campaign as approval completed
+    const { error: updateError } = await supabase
+      .from('campaigns')
+      .update({
+        approval_completed: true,
+        approval_completed_at: new Date().toISOString()
+      })
+      .eq('id', campaignId)
+
+    if (updateError) {
+      console.error('Error updating campaign status:', updateError)
+      // Don't throw error here - email was sent successfully
+    }
+
     return NextResponse.json({ success: true })
 
   } catch (error: any) {

@@ -4,6 +4,13 @@ import { useState, useEffect } from 'react'
 import { supabase, Campaign } from '@/lib/supabase'
 import { v4 as uuidv4 } from 'uuid'
 
+interface CampaignStats {
+  total: number
+  approved: number
+  disapproved: number
+  pending: number
+}
+
 export default function UploadPage() {
   const [campaignName, setCampaignName] = useState('')
   const [instructions, setInstructions] = useState('')
@@ -14,6 +21,7 @@ export default function UploadPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loadingCampaigns, setLoadingCampaigns] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [campaignStats, setCampaignStats] = useState<Record<string, CampaignStats>>({})
 
   useEffect(() => {
     loadCampaigns()
@@ -28,10 +36,46 @@ export default function UploadPage() {
 
       if (error) throw error
       setCampaigns(data)
+
+      // Load stats for each campaign
+      if (data) {
+        const statsPromises = data.map(async (campaign) => {
+          const stats = await getCampaignStats(campaign.id)
+          return { campaignId: campaign.id, stats }
+        })
+
+        const statsResults = await Promise.all(statsPromises)
+        const statsMap: Record<string, CampaignStats> = {}
+        statsResults.forEach(({ campaignId, stats }) => {
+          statsMap[campaignId] = stats
+        })
+        setCampaignStats(statsMap)
+      }
     } catch (error: any) {
       console.error('Error loading campaigns:', error)
     } finally {
       setLoadingCampaigns(false)
+    }
+  }
+
+  const getCampaignStats = async (campaignId: string) => {
+    try {
+      const { data: images, error } = await supabase
+        .from('images')
+        .select('approved')
+        .eq('campaign_id', campaignId)
+
+      if (error) throw error
+
+      const total = images.length
+      const approved = images.filter(img => img.approved === true).length
+      const disapproved = images.filter(img => img.approved === false).length
+      const pending = images.filter(img => img.approved === null).length
+
+      return { total, approved, disapproved, pending }
+    } catch (error) {
+      console.error('Error getting campaign stats:', error)
+      return { total: 0, approved: 0, disapproved: 0, pending: 0 }
     }
   }
 
@@ -199,29 +243,60 @@ export default function UploadPage() {
             <p style={{ color: '#6b7280' }}>No campaigns yet.</p>
           ) : (
             <div className="campaigns-list">
-              {campaigns.map((campaign) => (
-                <div key={campaign.id} className="campaign-item">
-                  <div className="campaign-info">
-                    <h3>{campaign.name}</h3>
-                    <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                      Created: {new Date(campaign.created_at).toLocaleDateString()}
-                    </p>
-                    <p style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                      {campaign.instructions}
-                    </p>
-                    <p style={{ color: '#3b82f6', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                      Approval URL: {window.location.origin}/approve/{campaign.id}
-                    </p>
+              {campaigns.map((campaign) => {
+                const stats = campaignStats[campaign.id] || { total: 0, approved: 0, disapproved: 0, pending: 0 }
+                return (
+                  <div key={campaign.id} className="campaign-item">
+                    <div className="campaign-info">
+                      <h3>{campaign.name}</h3>
+                      <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                        Created: {new Date(campaign.created_at).toLocaleDateString()}
+                      </p>
+                      <p style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                        {campaign.instructions}
+                      </p>
+                      
+                      {/* Approval Status */}
+                      {campaign.approval_completed ? (
+                        <div style={{ marginTop: '0.75rem', padding: '0.5rem', backgroundColor: '#f0fdf4', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
+                          <p style={{ color: '#16a34a', fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.25rem' }}>
+                            ✅ Client Review Complete ({new Date(campaign.approval_completed_at!).toLocaleDateString()})
+                          </p>
+                          <p style={{ color: '#16a34a', fontSize: '0.85rem' }}>
+                            Total: {stats.total} | Approved: {stats.approved} | Disapproved: {stats.disapproved}
+                          </p>
+                        </div>
+                      ) : stats.total > 0 ? (
+                        <div style={{ marginTop: '0.75rem', padding: '0.5rem', backgroundColor: '#fef3c7', borderRadius: '4px', border: '1px solid #fde68a' }}>
+                          <p style={{ color: '#d97706', fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.25rem' }}>
+                            ⏳ Awaiting Client Review
+                          </p>
+                          <p style={{ color: '#d97706', fontSize: '0.85rem' }}>
+                            Total: {stats.total} | Pending: {stats.pending} | Reviewed: {stats.approved + stats.disapproved}
+                          </p>
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: '0.75rem', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '4px', border: '1px solid #d1d5db' }}>
+                          <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                            📷 No images uploaded yet
+                          </p>
+                        </div>
+                      )}
+
+                      <p style={{ color: '#3b82f6', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                        Approval URL: {window.location.origin}/approve/{campaign.id}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => deleteCampaign(campaign)}
+                      disabled={deleting === campaign.id}
+                      className="delete-btn"
+                    >
+                      {deleting === campaign.id ? 'Deleting...' : 'Delete'}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => deleteCampaign(campaign)}
-                    disabled={deleting === campaign.id}
-                    className="delete-btn"
-                  >
-                    {deleting === campaign.id ? 'Deleting...' : 'Delete'}
-                  </button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

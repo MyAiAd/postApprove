@@ -10,6 +10,8 @@ export interface Campaign {
   name: string
   instructions: string
   created_at: string
+  approval_completed: boolean
+  approval_completed_at: string | null
 }
 
 export interface Image {
