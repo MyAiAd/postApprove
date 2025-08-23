@@ -66,6 +66,13 @@ You can view the full details at: ${process.env.NEXT_PUBLIC_APP_URL || 'your-app
 `
 
     // Send email using Resend
+    console.log('Attempting to send email with config:', {
+      from: 'AdApprove <noreply@msgs.myai.ad>',
+      to: process.env.ADMIN_EMAIL || 'Jenny@MyAi.ad',
+      hasApiKey: !!process.env.RESEND_API_KEY,
+      apiKeyPrefix: process.env.RESEND_API_KEY?.substring(0, 7) + '...'
+    })
+
     const { data, error: emailError } = await resend.emails.send({
       from: 'AdApprove <noreply@msgs.myai.ad>', // Using your verified domain
       to: [process.env.ADMIN_EMAIL || 'Jenny@MyAi.ad'],
@@ -73,7 +80,12 @@ You can view the full details at: ${process.env.NEXT_PUBLIC_APP_URL || 'your-app
       text: emailContent,
     })
 
-    console.log('Email send result:', { data, error: emailError })
+    console.log('Email send result:', { 
+      success: !!data, 
+      data, 
+      error: emailError,
+      errorMessage: emailError?.message 
+    })
 
     if (emailError) {
       throw new Error(`Failed to send email: ${emailError.message}`)
