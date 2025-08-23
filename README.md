@@ -30,7 +30,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 RESEND_API_KEY=your_resend_api_key
 
 # App Configuration
-ADMIN_EMAIL=Sage@MyAi.ad
+ADMIN_EMAIL=Jenny@MyAi.ad
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 

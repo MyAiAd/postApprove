@@ -1,0 +1,12 @@
+# Copy this file to .env.local and fill in your values
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Email Configuration (using Resend)
+RESEND_API_KEY=your_resend_api_key
+
+# App Configuration
+ADMIN_EMAIL=Jenny@MyAi.ad
+NEXT_PUBLIC_APP_URL=http://localhost:3000

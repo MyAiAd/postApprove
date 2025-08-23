@@ -283,8 +283,20 @@ export default function UploadPage() {
                         </div>
                       )}
 
-                      <p style={{ color: '#3b82f6', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                        Approval URL: {window.location.origin}/approve/{campaign.id}
+                      <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                        <span style={{ color: '#6b7280' }}>Approval URL: </span>
+                        <a 
+                          href={`${window.location.origin}/approve/${campaign.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ 
+                            color: '#3b82f6', 
+                            textDecoration: 'underline',
+                            wordBreak: 'break-all'
+                          }}
+                        >
+                          {window.location.origin}/approve/{campaign.id}
+                        </a>
                       </p>
                     </div>
                     <button
