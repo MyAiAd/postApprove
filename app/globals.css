@@ -247,4 +247,23 @@ body {
 .delete-btn:disabled {
   background-color: #9ca3af;
   cursor: not-allowed;
+}
+
+.two-column-layout {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.column-left,
+.column-right {
+  flex: 1;
+  min-width: 0; /* Prevents flex items from overflowing */
+}
+
+@media (max-width: 768px) {
+  .two-column-layout {
+    flex-direction: column;
+    gap: 1rem;
+  }
 } 

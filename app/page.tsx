@@ -185,46 +185,49 @@ export default function UploadPage() {
         </div>
       )}
 
-      {/* Existing Campaigns Section */}
-      <div className="upload-form">
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-          Existing Campaigns
-        </h2>
-        
-        {loadingCampaigns ? (
-          <div className="loading">Loading campaigns...</div>
-        ) : campaigns.length === 0 ? (
-          <p style={{ color: '#6b7280' }}>No campaigns yet.</p>
-        ) : (
-          <div className="campaigns-list">
-            {campaigns.map((campaign) => (
-              <div key={campaign.id} className="campaign-item">
-                <div className="campaign-info">
-                  <h3>{campaign.name}</h3>
-                  <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                    Created: {new Date(campaign.created_at).toLocaleDateString()}
-                  </p>
-                  <p style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                    {campaign.instructions}
-                  </p>
-                  <p style={{ color: '#3b82f6', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                    Approval URL: {window.location.origin}/approve/{campaign.id}
-                  </p>
+      {/* Side-by-side layout */}
+      <div className="two-column-layout">
+        {/* Existing Campaigns Section */}
+        <div className="upload-form column-left">
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+            Existing Campaigns
+          </h2>
+          
+          {loadingCampaigns ? (
+            <div className="loading">Loading campaigns...</div>
+          ) : campaigns.length === 0 ? (
+            <p style={{ color: '#6b7280' }}>No campaigns yet.</p>
+          ) : (
+            <div className="campaigns-list">
+              {campaigns.map((campaign) => (
+                <div key={campaign.id} className="campaign-item">
+                  <div className="campaign-info">
+                    <h3>{campaign.name}</h3>
+                    <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                      Created: {new Date(campaign.created_at).toLocaleDateString()}
+                    </p>
+                    <p style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                      {campaign.instructions}
+                    </p>
+                    <p style={{ color: '#3b82f6', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                      Approval URL: {window.location.origin}/approve/{campaign.id}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => deleteCampaign(campaign)}
+                    disabled={deleting === campaign.id}
+                    className="delete-btn"
+                  >
+                    {deleting === campaign.id ? 'Deleting...' : 'Delete'}
+                  </button>
                 </div>
-                <button
-                  onClick={() => deleteCampaign(campaign)}
-                  disabled={deleting === campaign.id}
-                  className="delete-btn"
-                >
-                  {deleting === campaign.id ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-      <form onSubmit={handleSubmit} className="upload-form">
+        {/* Create New Campaign Section */}
+        <form onSubmit={handleSubmit} className="upload-form column-right">
         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
           Create New Campaign
         </h2>
@@ -269,10 +272,11 @@ export default function UploadPage() {
           )}
         </div>
 
-        <button type="submit" className="btn" disabled={uploading}>
-          {uploading ? 'Uploading...' : 'Create Campaign'}
-        </button>
-      </form>
+          <button type="submit" className="btn" disabled={uploading}>
+            {uploading ? 'Uploading...' : 'Create Campaign'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 } 
