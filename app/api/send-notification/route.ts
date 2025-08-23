@@ -15,6 +15,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if Resend API key is configured
+    if (!process.env.RESEND_API_KEY) {
+      console.error('RESEND_API_KEY is not configured')
+      return NextResponse.json(
+        { error: 'Email service not configured' },
+        { status: 500 }
+      )
+    }
+
     // Get campaign images with approval status
     const { data: images, error: imagesError } = await supabase
       .from('images')
@@ -50,12 +59,14 @@ You can view the full details at: ${process.env.NEXT_PUBLIC_APP_URL || 'your-app
 `
 
     // Send email using Resend
-    const { error: emailError } = await resend.emails.send({
-      from: 'AdApprove <noreply@yourdomain.com>', // Replace with your verified domain
+    const { data, error: emailError } = await resend.emails.send({
+      from: 'AdApprove <onboarding@resend.dev>', // Using Resend's default domain for testing
       to: [process.env.ADMIN_EMAIL || 'Sage@MyAi.ad'],
       subject: `Campaign "${campaignName}" - Client Review Complete`,
       text: emailContent,
     })
+
+    console.log('Email send result:', { data, error: emailError })
 
     if (emailError) {
       throw new Error(`Failed to send email: ${emailError.message}`)
