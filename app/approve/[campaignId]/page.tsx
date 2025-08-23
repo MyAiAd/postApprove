@@ -74,7 +74,7 @@ export default function ApprovePage() {
       [imageId]: {
         ...prev[imageId],
         approved,
-        comments: approved ? '' : prev[imageId]?.comments || ''
+        comments: prev[imageId]?.comments || ''
       }
     }))
   }
@@ -197,14 +197,18 @@ export default function ApprovePage() {
                  </label>
                </div>
               
-              {approvals[image.id]?.approved === false && (
-                <textarea
-                  className="comments-textarea"
-                  placeholder="Please explain why you disapprove this image..."
-                  value={approvals[image.id]?.comments || ''}
-                  onChange={(e) => handleCommentsChange(image.id, e.target.value)}
-                />
-              )}
+                             <textarea
+                 className="comments-textarea"
+                 placeholder={
+                   approvals[image.id]?.approved === true 
+                     ? "Optional: Share your thoughts on why you approve this image..."
+                     : approvals[image.id]?.approved === false
+                     ? "Please explain why you disapprove this image..."
+                     : "Optional: Add any comments about this image..."
+                 }
+                 value={approvals[image.id]?.comments || ''}
+                 onChange={(e) => handleCommentsChange(image.id, e.target.value)}
+               />
             </div>
           </div>
         ))}

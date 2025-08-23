@@ -39,7 +39,12 @@ export async function POST(request: NextRequest) {
     const disapproved = images.filter(img => img.approved === false).length
     const total = images.length
 
-    // Get disapproved images with comments
+    // Get all images with comments
+    const approvedWithComments = images
+      .filter(img => img.approved === true && img.comments)
+      .map(img => `• ${img.filename}: ${img.comments}`)
+      .join('\n')
+
     const disapprovedWithComments = images
       .filter(img => img.approved === false && img.comments)
       .map(img => `• ${img.filename}: ${img.comments}`)
@@ -52,6 +57,8 @@ Results:
 - Total images: ${total}
 - Approved: ${approved}
 - Disapproved: ${disapproved}
+
+${approvedWithComments ? `\nComments on approved images:\n${approvedWithComments}` : ''}
 
 ${disapprovedWithComments ? `\nComments on disapproved images:\n${disapprovedWithComments}` : ''}
 

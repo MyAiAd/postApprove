@@ -9,6 +9,8 @@ interface CampaignStats {
   approved: number
   disapproved: number
   pending: number
+  approvedWithComments: any[]
+  disapprovedWithComments: any[]
 }
 
 export default function UploadPage() {
@@ -62,7 +64,7 @@ export default function UploadPage() {
     try {
       const { data: images, error } = await supabase
         .from('images')
-        .select('approved')
+        .select('approved, comments, filename')
         .eq('campaign_id', campaignId)
 
       if (error) throw error
@@ -72,10 +74,28 @@ export default function UploadPage() {
       const disapproved = images.filter(img => img.approved === false).length
       const pending = images.filter(img => img.approved === null).length
 
-      return { total, approved, disapproved, pending }
+      // Get comments for display
+      const approvedWithComments = images.filter(img => img.approved === true && img.comments)
+      const disapprovedWithComments = images.filter(img => img.approved === false && img.comments)
+
+      return { 
+        total, 
+        approved, 
+        disapproved, 
+        pending, 
+        approvedWithComments, 
+        disapprovedWithComments 
+      }
     } catch (error) {
       console.error('Error getting campaign stats:', error)
-      return { total: 0, approved: 0, disapproved: 0, pending: 0 }
+      return { 
+        total: 0, 
+        approved: 0, 
+        disapproved: 0, 
+        pending: 0, 
+        approvedWithComments: [], 
+        disapprovedWithComments: [] 
+      }
     }
   }
 
@@ -244,7 +264,14 @@ export default function UploadPage() {
           ) : (
             <div className="campaigns-list">
               {campaigns.map((campaign) => {
-                const stats = campaignStats[campaign.id] || { total: 0, approved: 0, disapproved: 0, pending: 0 }
+                const stats = campaignStats[campaign.id] || { 
+                  total: 0, 
+                  approved: 0, 
+                  disapproved: 0, 
+                  pending: 0, 
+                  approvedWithComments: [], 
+                  disapprovedWithComments: [] 
+                }
                 return (
                   <div key={campaign.id} className="campaign-item">
                     <div className="campaign-info">
@@ -265,6 +292,26 @@ export default function UploadPage() {
                           <p style={{ color: '#16a34a', fontSize: '0.85rem' }}>
                             Total: {stats.total} | Approved: {stats.approved} | Disapproved: {stats.disapproved}
                           </p>
+                          {(stats.approvedWithComments.length > 0 || stats.disapprovedWithComments.length > 0) && (
+                            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#16a34a' }}>
+                              {stats.approvedWithComments.length > 0 && (
+                                <div>
+                                  <strong>Approved with comments:</strong>
+                                  {stats.approvedWithComments.map((img: any, idx: number) => (
+                                    <div key={idx} style={{ marginLeft: '0.5rem' }}>• {img.filename}: {img.comments}</div>
+                                  ))}
+                                </div>
+                              )}
+                              {stats.disapprovedWithComments.length > 0 && (
+                                <div style={{ marginTop: stats.approvedWithComments.length > 0 ? '0.5rem' : '0' }}>
+                                  <strong>Disapproved with comments:</strong>
+                                  {stats.disapprovedWithComments.map((img: any, idx: number) => (
+                                    <div key={idx} style={{ marginLeft: '0.5rem' }}>• {img.filename}: {img.comments}</div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : stats.total > 0 && stats.pending > 0 ? (
                         <div style={{ marginTop: '0.75rem', padding: '0.5rem', backgroundColor: '#fef3c7', borderRadius: '4px', border: '1px solid #fde68a' }}>
