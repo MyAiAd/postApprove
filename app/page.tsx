@@ -266,13 +266,22 @@ export default function UploadPage() {
                             Total: {stats.total} | Approved: {stats.approved} | Disapproved: {stats.disapproved}
                           </p>
                         </div>
-                      ) : stats.total > 0 ? (
+                      ) : stats.total > 0 && stats.pending > 0 ? (
                         <div style={{ marginTop: '0.75rem', padding: '0.5rem', backgroundColor: '#fef3c7', borderRadius: '4px', border: '1px solid #fde68a' }}>
                           <p style={{ color: '#d97706', fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.25rem' }}>
                             ⏳ Awaiting Client Review
                           </p>
                           <p style={{ color: '#d97706', fontSize: '0.85rem' }}>
                             Total: {stats.total} | Pending: {stats.pending} | Reviewed: {stats.approved + stats.disapproved}
+                          </p>
+                        </div>
+                      ) : stats.total > 0 && stats.pending === 0 ? (
+                        <div style={{ marginTop: '0.75rem', padding: '0.5rem', backgroundColor: '#dbeafe', borderRadius: '4px', border: '1px solid #93c5fd' }}>
+                          <p style={{ color: '#1d4ed8', fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.25rem' }}>
+                            📝 Review Complete - Awaiting Email Notification
+                          </p>
+                          <p style={{ color: '#1d4ed8', fontSize: '0.85rem' }}>
+                            Total: {stats.total} | Approved: {stats.approved} | Disapproved: {stats.disapproved}
                           </p>
                         </div>
                       ) : (
