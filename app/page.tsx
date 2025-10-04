@@ -100,7 +100,7 @@ export default function UploadPage() {
   }
 
   const deleteCampaign = async (campaignToDelete: Campaign) => {
-    if (!confirm(`Are you sure you want to delete the campaign "${campaignToDelete.name}"? This will also delete all associated posts and cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete the post "${campaignToDelete.name}"? This will also delete all associated images and cannot be undone.`)) {
       return
     }
 
@@ -133,12 +133,12 @@ export default function UploadPage() {
 
       if (error) throw error
 
-      setMessage('Campaign deleted successfully!')
+      setMessage('Post deleted successfully!')
       loadCampaigns() // Reload campaigns list
 
     } catch (error: any) {
       console.error('Error deleting campaign:', error)
-      setMessage(`Error deleting campaign: ${error.message}`)
+      setMessage(`Error deleting post: ${error.message}`)
     } finally {
       setDeleting(null)
     }
@@ -208,7 +208,7 @@ export default function UploadPage() {
       await Promise.all(postPromises)
 
       setCampaignId(newCampaignId)
-      setMessage('Campaign created successfully!')
+      setMessage('Post created successfully!')
       setCampaignName('')
       setInstructions('')
       setFiles([])
@@ -231,7 +231,7 @@ export default function UploadPage() {
   return (
     <div className="container">
       <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '2rem', textAlign: 'center' }}>
-        Upload Campaign Posts
+        Social Media Posts
       </h1>
 
       {message && (
@@ -242,7 +242,7 @@ export default function UploadPage() {
 
       {campaignId && (
         <div className="success">
-          <p>Campaign created! Share this approval link with your client:</p>
+          <p>Post created! Share this approval link with your client:</p>
           <p style={{ fontWeight: 'bold', marginTop: '0.5rem' }}>
             {window.location.origin}/approve/{campaignId}
           </p>
@@ -251,16 +251,16 @@ export default function UploadPage() {
 
       {/* Side-by-side layout */}
       <div className="two-column-layout">
-        {/* Existing Campaigns Section */}
+        {/* Existing Posts Section */}
         <div className="upload-form column-left">
           <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            Existing Campaigns
+            Existing Posts
           </h2>
           
           {loadingCampaigns ? (
-            <div className="loading">Loading campaigns...</div>
+            <div className="loading">Loading posts...</div>
           ) : campaigns.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No campaigns yet.</p>
+            <p style={{ color: '#6b7280' }}>No posts yet.</p>
           ) : (
             <div className="campaigns-list">
               {campaigns.map((campaign) => {
@@ -279,7 +279,7 @@ export default function UploadPage() {
                       <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
                         Created: {new Date(campaign.created_at).toLocaleDateString()}
                       </p>
-                      <p style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                      <p style={{ color: '#374151', fontSize: '0.95rem', marginTop: '0.5rem', lineHeight: '1.5' }}>
                         {campaign.instructions}
                       </p>
                       
@@ -334,7 +334,7 @@ export default function UploadPage() {
                       ) : (
                         <div style={{ marginTop: '0.75rem', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '4px', border: '1px solid #d1d5db' }}>
                           <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                            📄 No posts uploaded yet
+                            📄 No images uploaded yet
                           </p>
                         </div>
                       )}
@@ -369,36 +369,36 @@ export default function UploadPage() {
           )}
         </div>
 
-        {/* Create New Campaign Section */}
+        {/* Create New Post Section */}
         <form onSubmit={handleSubmit} className="upload-form column-right">
         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-          Create New Campaign
+          Create New Post
         </h2>
         <div className="form-group">
-          <label htmlFor="campaignName">Campaign Name:</label>
+          <label htmlFor="campaignName">Post Title:</label>
           <input
             type="text"
             id="campaignName"
             value={campaignName}
             onChange={(e) => setCampaignName(e.target.value)}
-            placeholder="Enter campaign name"
+            placeholder="Enter post title"
             required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="instructions">Instructions for Client:</label>
+          <label htmlFor="instructions">Post Body:</label>
           <textarea
             id="instructions"
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
-            placeholder="Enter instructions for the client"
+            placeholder="Enter the text content for this social media post"
             required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="files">Select Posts:</label>
+          <label htmlFor="files">Select Images:</label>
           <input
             type="file"
             id="files"
@@ -416,7 +416,7 @@ export default function UploadPage() {
         </div>
 
           <button type="submit" className="btn" disabled={uploading}>
-            {uploading ? 'Uploading...' : 'Create Campaign'}
+            {uploading ? 'Uploading...' : 'Create Post'}
           </button>
         </form>
       </div>

@@ -96,7 +96,7 @@ export default function ApprovePage() {
 
   const handleSubmit = async () => {
     if (!allPostsReviewed()) {
-      setMessage('Please review all posts before submitting.')
+      setMessage('Please review all images before submitting.')
       return
     }
 
@@ -151,11 +151,11 @@ export default function ApprovePage() {
   }
 
   if (loading) {
-    return <div className="loading">Loading campaign...</div>
+    return <div className="loading">Loading post...</div>
   }
 
   if (!campaign) {
-    return <div className="error">Campaign not found.</div>
+    return <div className="error">Post not found.</div>
   }
 
   // Show thank you page after submission
@@ -168,15 +168,15 @@ export default function ApprovePage() {
             <div className="thank-you-icon">✅</div>
             <h2 className="thank-you-subtitle">Your review has been submitted</h2>
             <p className="thank-you-message">
-              We've received your feedback on the <strong>{campaign.name}</strong> campaign. 
+              We've received your feedback on the <strong>{campaign.name}</strong> post. 
               The team has been notified and will review your responses.
             </p>
             <div className="thank-you-summary">
               <p>Review Summary:</p>
               <ul>
-                <li>Total posts reviewed: {posts.length}</li>
-                <li>Posts approved: {posts.filter(post => approvals[post.id]?.approved === true).length}</li>
-                <li>Posts requiring changes: {posts.filter(post => approvals[post.id]?.approved === false).length}</li>
+                <li>Total images reviewed: {posts.length}</li>
+                <li>Images approved: {posts.filter(post => approvals[post.id]?.approved === true).length}</li>
+                <li>Images requiring changes: {posts.filter(post => approvals[post.id]?.approved === false).length}</li>
               </ul>
             </div>
             <p className="thank-you-footer">
@@ -191,8 +191,23 @@ export default function ApprovePage() {
   return (
     <div className="container">
       <div className="campaign-header">
-        <h2 className="campaign-title">{campaign.name}</h2>
-        <p className="campaign-instructions">{campaign.instructions}</p>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h3 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+            Post Title
+          </h3>
+          <h2 className="campaign-title" style={{ fontSize: '1.75rem', marginTop: '0' }}>{campaign.name}</h2>
+        </div>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h3 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+            Post Body
+          </h3>
+          <p className="campaign-instructions" style={{ fontSize: '1.05rem', lineHeight: '1.6', color: '#374151' }}>{campaign.instructions}</p>
+        </div>
+        <div>
+          <h3 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
+            Post Images
+          </h3>
+        </div>
       </div>
 
       {message && (
@@ -244,10 +259,10 @@ export default function ApprovePage() {
                   className="comments-textarea"
                   placeholder={
                     approvals[post.id]?.approved === true 
-                      ? "Share your thoughts on why you approve this post..."
+                      ? "Share your thoughts on why you approve this image..."
                       : approvals[post.id]?.approved === false
                       ? "Please explain what needs to change or what you don't like..."
-                      : "Add any comments about this post..."
+                      : "Add any comments about this image..."
                   }
                   value={approvals[post.id]?.comments || ''}
                   onChange={(e) => handleCommentsChange(post.id, e.target.value)}
@@ -269,7 +284,7 @@ export default function ApprovePage() {
         </button>
         {!allPostsReviewed() && (
           <p style={{ marginTop: '1rem', color: '#6b7280' }}>
-            Please review all posts before submitting.
+            Please review all images before submitting.
           </p>
         )}
       </div>
