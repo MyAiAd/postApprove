@@ -224,6 +224,67 @@ export default function ApprovePage() {
         </div>
       )}
 
+      {/* Post Title Section */}
+      <div className="post-card" style={{ marginBottom: '1.5rem' }}>
+        <div style={{ padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '2px solid #e5e7eb' }}>
+          <h3 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+            Post Title
+          </h3>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem', color: '#111827' }}>{campaign.name}</h2>
+          
+          <div className="post-controls">
+            <div className="approval-section">
+              <h4 className="approval-title">Your Decision:</h4>
+              <div className="radio-group">
+                <label className="radio-option approve-option">
+                  <input
+                    type="radio"
+                    name="title-approval"
+                    value="approve"
+                    checked={titleApproved === true}
+                    onChange={() => setTitleApproved(true)}
+                  />
+                  <span className="radio-label">✅ Approve</span>
+                </label>
+                <label className="radio-option disapprove-option">
+                  <input
+                    type="radio"
+                    name="title-approval"
+                    value="disapprove"
+                    checked={titleApproved === false}
+                    onChange={() => setTitleApproved(false)}
+                  />
+                  <span className="radio-label">❌ Disapprove</span>
+                </label>
+              </div>
+            </div>
+            
+            <div className="feedback-section">
+              <h4 className="feedback-title">
+                {titleApproved === true 
+                  ? "Comments (Optional):" 
+                  : titleApproved === false
+                  ? "Please explain what needs to change:"
+                  : "Comments (Optional):"}
+              </h4>
+              <textarea
+                className="comments-textarea"
+                placeholder={
+                  titleApproved === true 
+                    ? "Share your thoughts on the title..."
+                    : titleApproved === false
+                    ? "Please explain what needs to change about the title..."
+                    : "Add any comments about the title..."
+                }
+                value={titleComments}
+                onChange={(e) => setTitleComments(e.target.value)}
+                rows={2}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Post Images Section */}
       <div style={{ marginBottom: '1rem' }}>
         <h3 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -287,67 +348,6 @@ export default function ApprovePage() {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Post Title Section */}
-      <div className="post-card" style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
-        <div style={{ padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '2px solid #e5e7eb' }}>
-          <h3 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-            Post Title
-          </h3>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem', color: '#111827' }}>{campaign.name}</h2>
-          
-          <div className="post-controls">
-            <div className="approval-section">
-              <h4 className="approval-title">Your Decision:</h4>
-              <div className="radio-group">
-                <label className="radio-option approve-option">
-                  <input
-                    type="radio"
-                    name="title-approval"
-                    value="approve"
-                    checked={titleApproved === true}
-                    onChange={() => setTitleApproved(true)}
-                  />
-                  <span className="radio-label">✅ Approve</span>
-                </label>
-                <label className="radio-option disapprove-option">
-                  <input
-                    type="radio"
-                    name="title-approval"
-                    value="disapprove"
-                    checked={titleApproved === false}
-                    onChange={() => setTitleApproved(false)}
-                  />
-                  <span className="radio-label">❌ Disapprove</span>
-                </label>
-              </div>
-            </div>
-            
-            <div className="feedback-section">
-              <h4 className="feedback-title">
-                {titleApproved === true 
-                  ? "Comments (Optional):" 
-                  : titleApproved === false
-                  ? "Please explain what needs to change:"
-                  : "Comments (Optional):"}
-              </h4>
-              <textarea
-                className="comments-textarea"
-                placeholder={
-                  titleApproved === true 
-                    ? "Share your thoughts on the title..."
-                    : titleApproved === false
-                    ? "Please explain what needs to change about the title..."
-                    : "Add any comments about the title..."
-                }
-                value={titleComments}
-                onChange={(e) => setTitleComments(e.target.value)}
-                rows={2}
-              />
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Post Body Section */}
