@@ -12,6 +12,10 @@ export interface Campaign {
   created_at: string
   approval_completed: boolean
   approval_completed_at: string | null
+  title_approved: boolean | null
+  title_comments: string | null
+  body_approved: boolean | null
+  body_comments: string | null
 }
 
 export interface Post {
