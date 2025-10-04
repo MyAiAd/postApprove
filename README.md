@@ -1,13 +1,13 @@
-# AdApprove - Image Approval System
+# PostApprove - Social Media Post Approval System
 
-A simple Next.js application for client image approval workflows using Supabase and Resend.
+A simple Next.js application for client social media post approval workflows using Supabase and Resend.
 
 ## Features
 
-- **Upload Page**: Upload campaign images with name and instructions
-- **Approval Page**: Client-friendly interface for approving/disapproving images
+- **Upload Page**: Upload campaign social media posts with name and instructions
+- **Approval Page**: Client-friendly interface for approving/disapproving posts
 - **Email Notifications**: Automatic email notifications when reviews are complete
-- **Comments System**: Clients can provide feedback on disapproved images
+- **Comments System**: Clients can provide feedback on disapproved posts
 
 ## Setup Instructions
 
@@ -58,13 +58,13 @@ Visit `http://localhost:3000` to access the upload page.
 
 ### For Admins (Upload Page)
 1. Enter campaign name and client instructions
-2. Upload images for approval
+2. Upload social media posts for approval
 3. Share the generated approval link with your client
 
 ### For Clients (Approval Page)
 1. Visit the approval link provided
-2. Review each image with Yes/No radio buttons
-3. Add comments for disapproved images
+2. Review each post with Yes/No radio buttons
+3. Add comments for disapproved posts
 4. Submit all approvals when complete
 
 ## Deployment
@@ -79,16 +79,16 @@ This app is ready for deployment on Vercel:
 ## Storage Setup in Supabase
 
 1. Go to Storage in your Supabase dashboard
-2. Create a new bucket called `images`
+2. Create a new bucket called `posts`
 3. Set the bucket to public
-4. Add this RLS policy for the images bucket:
+4. Add this RLS policy for the posts bucket:
 
 ```sql
--- Allow public read access to images
+-- Allow public read access to posts
 CREATE POLICY "Public read access" ON storage.objects
-FOR SELECT USING (bucket_id = 'images');
+FOR SELECT USING (bucket_id = 'posts');
 
--- Allow authenticated insert access to images
+-- Allow authenticated insert access to posts
 CREATE POLICY "Authenticated insert access" ON storage.objects
-FOR INSERT WITH CHECK (bucket_id = 'images');
+FOR INSERT WITH CHECK (bucket_id = 'posts');
 ``` 

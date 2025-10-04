@@ -3,8 +3,8 @@ import Image from 'next/image'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'AdApprove - Image Approval System',
-  description: 'Simple image approval system for client campaigns',
+  title: 'PostApprove - Social Media Post Approval System',
+  description: 'Simple social media post approval system for client campaigns',
 }
 
 export default function RootLayout({
