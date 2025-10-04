@@ -206,41 +206,54 @@ export default function ApprovePage() {
           <div key={post.id} className="post-card">
             <img src={post.url} alt={post.filename} />
             <div className="post-controls">
-                             <div className="radio-group">
-                 <label className="radio-option">
-                   <input
-                     type="radio"
-                     name={`approval-${post.id}`}
-                     value="approve"
-                     checked={approvals[post.id]?.approved === true}
-                     onChange={() => handleApprovalChange(post.id, true)}
-                   />
-                   Approve
-                 </label>
-                 <label className="radio-option">
-                   <input
-                     type="radio"
-                     name={`approval-${post.id}`}
-                     value="disapprove"
-                     checked={approvals[post.id]?.approved === false}
-                     onChange={() => handleApprovalChange(post.id, false)}
-                   />
-                   Disapprove
-                 </label>
-               </div>
+              <div className="approval-section">
+                <h4 className="approval-title">Your Decision:</h4>
+                <div className="radio-group">
+                  <label className="radio-option approve-option">
+                    <input
+                      type="radio"
+                      name={`approval-${post.id}`}
+                      value="approve"
+                      checked={approvals[post.id]?.approved === true}
+                      onChange={() => handleApprovalChange(post.id, true)}
+                    />
+                    <span className="radio-label">✅ Approve</span>
+                  </label>
+                  <label className="radio-option disapprove-option">
+                    <input
+                      type="radio"
+                      name={`approval-${post.id}`}
+                      value="disapprove"
+                      checked={approvals[post.id]?.approved === false}
+                      onChange={() => handleApprovalChange(post.id, false)}
+                    />
+                    <span className="radio-label">❌ Disapprove</span>
+                  </label>
+                </div>
+              </div>
               
-                             <textarea
-                 className="comments-textarea"
-                 placeholder={
-                   approvals[post.id]?.approved === true 
-                     ? "Optional: Share your thoughts on why you approve this post..."
-                     : approvals[post.id]?.approved === false
-                     ? "Please explain why you disapprove this post..."
-                     : "Optional: Add any comments about this post..."
-                 }
-                 value={approvals[post.id]?.comments || ''}
-                 onChange={(e) => handleCommentsChange(post.id, e.target.value)}
-               />
+              <div className="feedback-section">
+                <h4 className="feedback-title">
+                  {approvals[post.id]?.approved === true 
+                    ? "Comments (Optional):" 
+                    : approvals[post.id]?.approved === false
+                    ? "Please explain what needs to change:"
+                    : "Comments (Optional):"}
+                </h4>
+                <textarea
+                  className="comments-textarea"
+                  placeholder={
+                    approvals[post.id]?.approved === true 
+                      ? "Share your thoughts on why you approve this post..."
+                      : approvals[post.id]?.approved === false
+                      ? "Please explain what needs to change or what you don't like..."
+                      : "Add any comments about this post..."
+                  }
+                  value={approvals[post.id]?.comments || ''}
+                  onChange={(e) => handleCommentsChange(post.id, e.target.value)}
+                  rows={3}
+                />
+              </div>
             </div>
           </div>
         ))}
