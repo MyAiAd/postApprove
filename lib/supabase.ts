@@ -14,7 +14,7 @@ export interface Campaign {
   approval_completed_at: string | null
 }
 
-export interface Image {
+export interface Post {
   id: string
   campaign_id: string
   filename: string

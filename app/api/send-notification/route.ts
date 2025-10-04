@@ -24,43 +24,43 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get campaign images with approval status
-    const { data: images, error: imagesError } = await supabase
-      .from('images')
+    // Get campaign posts with approval status
+    const { data: posts, error: postsError } = await supabase
+      .from('posts')
       .select('*')
       .eq('campaign_id', campaignId)
 
-    if (imagesError) {
-      throw new Error(`Failed to fetch images: ${imagesError.message}`)
+    if (postsError) {
+      throw new Error(`Failed to fetch posts: ${postsError.message}`)
     }
 
     // Count approvals and disapprovals
-    const approved = images.filter(img => img.approved === true).length
-    const disapproved = images.filter(img => img.approved === false).length
-    const total = images.length
+    const approved = posts.filter(post => post.approved === true).length
+    const disapproved = posts.filter(post => post.approved === false).length
+    const total = posts.length
 
-    // Get all images with comments
-    const approvedWithComments = images
-      .filter(img => img.approved === true && img.comments)
-      .map(img => `• ${img.filename}: ${img.comments}`)
+    // Get all posts with comments
+    const approvedWithComments = posts
+      .filter(post => post.approved === true && post.comments)
+      .map(post => `• ${post.filename}: ${post.comments}`)
       .join('\n')
 
-    const disapprovedWithComments = images
-      .filter(img => img.approved === false && img.comments)
-      .map(img => `• ${img.filename}: ${img.comments}`)
+    const disapprovedWithComments = posts
+      .filter(post => post.approved === false && post.comments)
+      .map(post => `• ${post.filename}: ${post.comments}`)
       .join('\n')
 
     const emailContent = `
 Campaign "${campaignName}" has been reviewed by the client.
 
 Results:
-- Total images: ${total}
+- Total posts: ${total}
 - Approved: ${approved}
 - Disapproved: ${disapproved}
 
-${approvedWithComments ? `\nComments on approved images:\n${approvedWithComments}` : ''}
+${approvedWithComments ? `\nComments on approved posts:\n${approvedWithComments}` : ''}
 
-${disapprovedWithComments ? `\nComments on disapproved images:\n${disapprovedWithComments}` : ''}
+${disapprovedWithComments ? `\nComments on disapproved posts:\n${disapprovedWithComments}` : ''}
 
 You can view the full details at: ${process.env.NEXT_PUBLIC_APP_URL || 'your-app-url'}/approve/${campaignId}
 `

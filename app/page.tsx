@@ -62,21 +62,21 @@ export default function UploadPage() {
 
   const getCampaignStats = async (campaignId: string) => {
     try {
-      const { data: images, error } = await supabase
-        .from('images')
+      const { data: posts, error } = await supabase
+        .from('posts')
         .select('approved, comments, filename')
         .eq('campaign_id', campaignId)
 
       if (error) throw error
 
-      const total = images.length
-      const approved = images.filter(img => img.approved === true).length
-      const disapproved = images.filter(img => img.approved === false).length
-      const pending = images.filter(img => img.approved === null).length
+      const total = posts.length
+      const approved = posts.filter(post => post.approved === true).length
+      const disapproved = posts.filter(post => post.approved === false).length
+      const pending = posts.filter(post => post.approved === null).length
 
       // Get comments for display
-      const approvedWithComments = images.filter(img => img.approved === true && img.comments)
-      const disapprovedWithComments = images.filter(img => img.approved === false && img.comments)
+      const approvedWithComments = posts.filter(post => post.approved === true && post.comments)
+      const disapprovedWithComments = posts.filter(post => post.approved === false && post.comments)
 
       return { 
         total, 
@@ -100,32 +100,32 @@ export default function UploadPage() {
   }
 
   const deleteCampaign = async (campaignToDelete: Campaign) => {
-    if (!confirm(`Are you sure you want to delete the campaign "${campaignToDelete.name}"? This will also delete all associated images and cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete the campaign "${campaignToDelete.name}"? This will also delete all associated posts and cannot be undone.`)) {
       return
     }
 
     setDeleting(campaignToDelete.id)
 
     try {
-      // Delete all images from storage first
-      const { data: images } = await supabase
-        .from('images')
+      // Delete all posts from storage first
+      const { data: posts } = await supabase
+        .from('posts')
         .select('url')
         .eq('campaign_id', campaignToDelete.id)
 
-      if (images) {
-        const deletePromises = images.map(async (image) => {
-          const filePath = image.url.split('/').pop() // Extract file path from URL
+      if (posts) {
+        const deletePromises = posts.map(async (post) => {
+          const filePath = post.url.split('/').pop() // Extract file path from URL
           if (filePath) {
             await supabase.storage
-              .from('images')
+              .from('posts')
               .remove([`${campaignToDelete.id}/${filePath}`])
           }
         })
         await Promise.all(deletePromises)
       }
 
-      // Delete campaign (this will cascade delete images due to foreign key)
+      // Delete campaign (this will cascade delete posts due to foreign key)
       const { error } = await supabase
         .from('campaigns')
         .delete()
@@ -174,27 +174,27 @@ export default function UploadPage() {
 
       if (campaignError) throw campaignError
 
-      // Upload images
-      const imagePromises = files.map(async (file) => {
+      // Upload posts
+      const postPromises = files.map(async (file) => {
         const fileExt = file.name.split('.').pop()
         const fileName = `${uuidv4()}.${fileExt}`
         const filePath = `${newCampaignId}/${fileName}`
 
         // Upload file to Supabase Storage
         const { error: uploadError } = await supabase.storage
-          .from('images')
+          .from('posts')
           .upload(filePath, file)
 
         if (uploadError) throw uploadError
 
         // Get public URL
         const { data: { publicUrl } } = supabase.storage
-          .from('images')
+          .from('posts')
           .getPublicUrl(filePath)
 
-        // Insert image record
+        // Insert post record
         const { error: insertError } = await supabase
-          .from('images')
+          .from('posts')
           .insert({
             id: uuidv4(),
             campaign_id: newCampaignId,
@@ -205,7 +205,7 @@ export default function UploadPage() {
         if (insertError) throw insertError
       })
 
-      await Promise.all(imagePromises)
+      await Promise.all(postPromises)
 
       setCampaignId(newCampaignId)
       setMessage('Campaign created successfully!')
@@ -231,7 +231,7 @@ export default function UploadPage() {
   return (
     <div className="container">
       <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '2rem', textAlign: 'center' }}>
-        Upload Campaign Images
+        Upload Campaign Posts
       </h1>
 
       {message && (
@@ -334,7 +334,7 @@ export default function UploadPage() {
                       ) : (
                         <div style={{ marginTop: '0.75rem', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '4px', border: '1px solid #d1d5db' }}>
                           <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                            📷 No images uploaded yet
+                            📄 No posts uploaded yet
                           </p>
                         </div>
                       )}
@@ -398,7 +398,7 @@ export default function UploadPage() {
         </div>
 
         <div className="form-group">
-          <label htmlFor="files">Select Images:</label>
+          <label htmlFor="files">Select Posts:</label>
           <input
             type="file"
             id="files"

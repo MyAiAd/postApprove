@@ -100,21 +100,24 @@ body {
   cursor: not-allowed;
 }
 
-.image-grid {
+.image-grid,
+.post-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 2rem;
   margin-top: 2rem;
 }
 
-.image-card {
+.image-card,
+.post-card {
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
-.image-card img {
+.image-card img,
+.post-card img {
   width: 100%;
   height: auto;
   max-height: 600px;
@@ -122,7 +125,8 @@ body {
   border-bottom: 1px solid #e5e7eb;
 }
 
-.image-controls {
+.image-controls,
+.post-controls {
   padding: 1rem;
 }
 

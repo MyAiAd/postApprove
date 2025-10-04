@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase, Campaign, Image } from '@/lib/supabase'
+import { supabase, Campaign, Post } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
 
-interface ImageApproval {
-  imageId: string
+interface PostApproval {
+  postId: string
   approved: boolean | null
   comments: string
 }
@@ -15,8 +15,8 @@ export default function ApprovePage() {
   const campaignId = params.campaignId as string
   
   const [campaign, setCampaign] = useState<Campaign | null>(null)
-  const [images, setImages] = useState<Image[]>([])
-  const [approvals, setApprovals] = useState<Record<string, ImageApproval>>({})
+  const [posts, setPosts] = useState<Post[]>([])
+  const [approvals, setApprovals] = useState<Record<string, PostApproval>>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
@@ -40,23 +40,23 @@ export default function ApprovePage() {
       if (campaignError) throw campaignError
       setCampaign(campaignData)
 
-      // Load images
-      const { data: imagesData, error: imagesError } = await supabase
-        .from('images')
+      // Load posts
+      const { data: postsData, error: postsError } = await supabase
+        .from('posts')
         .select('*')
         .eq('campaign_id', campaignId)
         .order('created_at')
 
-      if (imagesError) throw imagesError
-      setImages(imagesData)
+      if (postsError) throw postsError
+      setPosts(postsData)
 
       // Initialize approvals state
-      const initialApprovals: Record<string, ImageApproval> = {}
-      imagesData.forEach((image) => {
-        initialApprovals[image.id] = {
-          imageId: image.id,
-          approved: image.approved,
-          comments: image.comments || ''
+      const initialApprovals: Record<string, PostApproval> = {}
+      postsData.forEach((post) => {
+        initialApprovals[post.id] = {
+          postId: post.id,
+          approved: post.approved,
+          comments: post.comments || ''
         }
       })
       setApprovals(initialApprovals)
@@ -69,34 +69,34 @@ export default function ApprovePage() {
     }
   }
 
-  const handleApprovalChange = (imageId: string, approved: boolean) => {
+  const handleApprovalChange = (postId: string, approved: boolean) => {
     setApprovals(prev => ({
       ...prev,
-      [imageId]: {
-        ...prev[imageId],
+      [postId]: {
+        ...prev[postId],
         approved,
-        comments: prev[imageId]?.comments || ''
+        comments: prev[postId]?.comments || ''
       }
     }))
   }
 
-  const handleCommentsChange = (imageId: string, comments: string) => {
+  const handleCommentsChange = (postId: string, comments: string) => {
     setApprovals(prev => ({
       ...prev,
-      [imageId]: {
-        ...prev[imageId],
+      [postId]: {
+        ...prev[postId],
         comments
       }
     }))
   }
 
-  const allImagesReviewed = () => {
-    return images.every(image => approvals[image.id]?.approved !== null)
+  const allPostsReviewed = () => {
+    return posts.every(post => approvals[post.id]?.approved !== null)
   }
 
   const handleSubmit = async () => {
-    if (!allImagesReviewed()) {
-      setMessage('Please review all images before submitting.')
+    if (!allPostsReviewed()) {
+      setMessage('Please review all posts before submitting.')
       return
     }
 
@@ -104,16 +104,16 @@ export default function ApprovePage() {
     setMessage('')
 
     try {
-      // Update all images with approval status
-      const updatePromises = images.map(async (image) => {
-        const approval = approvals[image.id]
+      // Update all posts with approval status
+      const updatePromises = posts.map(async (post) => {
+        const approval = approvals[post.id]
         const { error } = await supabase
-          .from('images')
+          .from('posts')
           .update({
             approved: approval.approved,
             comments: approval.comments || null
           })
-          .eq('id', image.id)
+          .eq('id', post.id)
 
         if (error) throw error
       })
@@ -174,9 +174,9 @@ export default function ApprovePage() {
             <div className="thank-you-summary">
               <p>Review Summary:</p>
               <ul>
-                <li>Total images reviewed: {images.length}</li>
-                <li>Images approved: {images.filter(img => approvals[img.id]?.approved === true).length}</li>
-                <li>Images requiring changes: {images.filter(img => approvals[img.id]?.approved === false).length}</li>
+                <li>Total posts reviewed: {posts.length}</li>
+                <li>Posts approved: {posts.filter(post => approvals[post.id]?.approved === true).length}</li>
+                <li>Posts requiring changes: {posts.filter(post => approvals[post.id]?.approved === false).length}</li>
               </ul>
             </div>
             <p className="thank-you-footer">
@@ -201,29 +201,29 @@ export default function ApprovePage() {
         </div>
       )}
 
-      <div className="image-grid">
-        {images.map((image) => (
-          <div key={image.id} className="image-card">
-            <img src={image.url} alt={image.filename} />
-            <div className="image-controls">
+      <div className="post-grid">
+        {posts.map((post) => (
+          <div key={post.id} className="post-card">
+            <img src={post.url} alt={post.filename} />
+            <div className="post-controls">
                              <div className="radio-group">
                  <label className="radio-option">
                    <input
                      type="radio"
-                     name={`approval-${image.id}`}
+                     name={`approval-${post.id}`}
                      value="approve"
-                     checked={approvals[image.id]?.approved === true}
-                     onChange={() => handleApprovalChange(image.id, true)}
+                     checked={approvals[post.id]?.approved === true}
+                     onChange={() => handleApprovalChange(post.id, true)}
                    />
                    Approve
                  </label>
                  <label className="radio-option">
                    <input
                      type="radio"
-                     name={`approval-${image.id}`}
+                     name={`approval-${post.id}`}
                      value="disapprove"
-                     checked={approvals[image.id]?.approved === false}
-                     onChange={() => handleApprovalChange(image.id, false)}
+                     checked={approvals[post.id]?.approved === false}
+                     onChange={() => handleApprovalChange(post.id, false)}
                    />
                    Disapprove
                  </label>
@@ -232,14 +232,14 @@ export default function ApprovePage() {
                              <textarea
                  className="comments-textarea"
                  placeholder={
-                   approvals[image.id]?.approved === true 
-                     ? "Optional: Share your thoughts on why you approve this image..."
-                     : approvals[image.id]?.approved === false
-                     ? "Please explain why you disapprove this image..."
-                     : "Optional: Add any comments about this image..."
+                   approvals[post.id]?.approved === true 
+                     ? "Optional: Share your thoughts on why you approve this post..."
+                     : approvals[post.id]?.approved === false
+                     ? "Please explain why you disapprove this post..."
+                     : "Optional: Add any comments about this post..."
                  }
-                 value={approvals[image.id]?.comments || ''}
-                 onChange={(e) => handleCommentsChange(image.id, e.target.value)}
+                 value={approvals[post.id]?.comments || ''}
+                 onChange={(e) => handleCommentsChange(post.id, e.target.value)}
                />
             </div>
           </div>
@@ -250,13 +250,13 @@ export default function ApprovePage() {
         <button 
           onClick={handleSubmit} 
           className="btn" 
-          disabled={!allImagesReviewed() || submitting}
+          disabled={!allPostsReviewed() || submitting}
         >
           {submitting ? 'Submitting...' : 'Submit All'}
         </button>
-        {!allImagesReviewed() && (
+        {!allPostsReviewed() && (
           <p style={{ marginTop: '1rem', color: '#6b7280' }}>
-            Please review all images before submitting.
+            Please review all posts before submitting.
           </p>
         )}
       </div>
