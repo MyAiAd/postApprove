@@ -54,7 +54,7 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
   const dragHandlers = day.campaign ? listeners : {}
 
   const [titleApproved, setTitleApproved] = useState<boolean | null>(
-    day.campaign?.title_approved || null
+    day.campaign?.title_approved ?? null
   )
 
   const handleApprovalChange = async (approved: boolean) => {
