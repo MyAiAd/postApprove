@@ -488,9 +488,9 @@ export default function UploadPage() {
       // Parse the topics - remove numbering if present
       const topics = content
         .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
-        .map(line => line.replace(/^\d+[\.\)\:]?\s*/, '')) // Remove leading numbers
+        .map((line: string) => line.trim())
+        .filter((line: string) => line.length > 0)
+        .map((line: string) => line.replace(/^\d+[\.\)\:]?\s*/, '')) // Remove leading numbers
         .slice(0, daysInMonth) // Ensure we only get the right number
 
       if (topics.length !== daysInMonth) {
