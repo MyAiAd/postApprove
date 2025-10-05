@@ -236,7 +236,7 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
         day.campaign.name === 'blank' ? (
           // Blank campaign - show clickable "blank" text, no approval buttons
           <div className="calendar-post-content">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
               <a
                 href={`/calendar/${calendarId}/add/${day.dayNumber}`}
                 className="calendar-blank-link"
@@ -247,27 +247,19 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
               <button
                 onClick={async (e) => {
                   e.stopPropagation()
-                  if (confirm('Delete this blank and shift posts left?')) {
+                  if (confirm('Delete this blank? Posts after it will shift left.')) {
                     try {
                       await supabase.from('campaigns').delete().eq('id', day.campaign!.id)
                       window.location.reload()
                     } catch (error) {
-                      console.error('Error deleting blank:', error)
-                      alert('Error deleting blank: ' + error)
+                      console.error('Error deleting:', error)
+                      alert('Error deleting: ' + error)
                     }
                   }
                 }}
-                style={{
-                  fontSize: '0.7rem',
-                  padding: '0.2rem 0.4rem',
-                  background: '#fee2e2',
-                  border: '1px solid #dc2626',
-                  borderRadius: '3px',
-                  color: '#dc2626',
-                  cursor: 'pointer'
-                }}
+                className="delete-inline-btn"
               >
-                Delete
+                🗑️
               </button>
             </div>
           </div>
@@ -1222,6 +1214,31 @@ export default function CalendarPage() {
         :global(.calendar-blank-link:hover) {
           color: #6b7280;
           text-decoration: underline;
+        }
+
+        :global(.delete-inline-btn) {
+          padding: 0.2rem 0.3rem;
+          background: transparent;
+          border: 1px solid #e5e7eb;
+          border-radius: 3px;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          opacity: 0.4;
+          flex-shrink: 0;
+        }
+
+        :global(.delete-inline-btn:hover) {
+          opacity: 1;
+          background: #fee2e2;
+          border-color: #dc2626;
+        }
+
+        @media (max-width: 1400px) {
+          :global(.delete-inline-btn) {
+            padding: 0.15rem 0.25rem;
+            font-size: 0.75rem;
+          }
         }
       `}</style>
     </div>
