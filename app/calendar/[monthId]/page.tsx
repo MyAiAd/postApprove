@@ -109,8 +109,8 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
     opacity: isDragging ? 0.5 : 1,
   }
   
-  // All squares should be draggable now (including blank campaigns)
-  const dragHandlers = listeners
+  // Only draggable if there's a campaign (including blank campaigns with DB records)
+  const dragHandlers = day.campaign ? listeners : {}
 
   const [titleApproved, setTitleApproved] = useState<boolean | null>(
     day.campaign?.title_approved ?? null
@@ -376,8 +376,6 @@ export default function CalendarPage() {
 
     // Calendar -> Calendar (swap positions)
     if (activeCalendarIndex !== -1 && overCalendarIndex !== -1 && activeId !== overId) {
-      console.log('Calendar to calendar drag:', { activeId, overId, activeCalendarIndex, overCalendarIndex })
-      
       const newDays = arrayMove(days, activeCalendarIndex, overCalendarIndex)
       const updatedDays = newDays.map((day, index) => ({
         ...day,
@@ -389,22 +387,13 @@ export default function CalendarPage() {
       const updatePromises = updatedDays
         .filter(day => day.campaign)
         .map(async (day) => {
-          console.log(`Updating campaign ${day.campaign!.id} to day ${day.dayNumber}`)
-          const { error } = await supabase
+          await supabase
             .from('campaigns')
             .update({ day_number: day.dayNumber })
             .eq('id', day.campaign!.id)
-          
-          if (error) {
-            console.error('Error updating day number:', error)
-            throw error
-          }
         })
 
-      await Promise.all(updatePromises).catch((error) => {
-        console.error('Error in batch update:', error)
-        loadCalendarData()
-      })
+      await Promise.all(updatePromises).catch(() => loadCalendarData())
     }
   }
 
@@ -558,7 +547,7 @@ export default function CalendarPage() {
           background: #f9fafb;
           border-right: 1px solid #e5e7eb;
           padding: 1.5rem;
-          padding-top: 5rem; /* Push content below logo */
+          padding-top: 7rem; /* Push content below logo */
           overflow-y: auto;
           position: fixed;
           height: 100vh;
