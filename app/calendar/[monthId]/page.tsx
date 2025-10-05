@@ -28,29 +28,41 @@ interface CalendarDay {
 }
 
 // Sidebar Posts Component
-function SidebarPostsList({ posts }: { posts: Campaign[] }) {
+function SidebarPostsList({ posts, collapsed, onToggle }: { posts: Campaign[]; collapsed: boolean; onToggle: () => void }) {
   const {
     setNodeRef,
-  } = useSortable({ 
+  } = useSortable({
     id: 'sidebar',
     disabled: false
   })
 
   return (
-    <div ref={setNodeRef} className="sidebar">
-      <div className="sidebar-header">
-        <h3>Individual Posts</h3>
-        <p className="sidebar-subtitle">Drag to calendar</p>
-      </div>
-      <div className="sidebar-posts">
-        {posts.length === 0 ? (
-          <p className="sidebar-empty">No individual posts</p>
-        ) : (
-          posts.map(post => (
-            <SidebarPost key={post.id} post={post} />
-          ))
-        )}
-      </div>
+    <div ref={setNodeRef} className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+      <button 
+        className="sidebar-toggle-btn" 
+        onClick={onToggle}
+        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {collapsed ? '→' : '←'}
+      </button>
+      
+      {!collapsed && (
+        <>
+          <div className="sidebar-header">
+            <h3>Individual Posts</h3>
+            <p className="sidebar-subtitle">Drag to calendar</p>
+          </div>
+          <div className="sidebar-posts">
+            {posts.length === 0 ? (
+              <p className="sidebar-empty">No individual posts</p>
+            ) : (
+              posts.map(post => (
+                <SidebarPost key={post.id} post={post} />
+              ))
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -232,6 +244,7 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [approving, setApproving] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -490,9 +503,13 @@ export default function CalendarPage() {
           items={allDraggableIds}
           strategy={rectSortingStrategy}
         >
-          <SidebarPostsList posts={individualPosts} />
+          <SidebarPostsList 
+            posts={individualPosts} 
+            collapsed={sidebarCollapsed} 
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+          />
 
-          <div className="main-content">
+          <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
             <div className="calendar-header">
               <h1 className="calendar-title">{calendar.name}</h1>
               <p className="calendar-month">{calendar.month}</p>
@@ -555,6 +572,38 @@ export default function CalendarPage() {
           left: 0;
           top: 0;
           z-index: 10;
+          transition: width 0.3s ease, padding 0.3s ease;
+        }
+
+        :global(.sidebar.collapsed) {
+          width: 50px;
+          padding: 1.5rem 0.5rem;
+        }
+
+        :global(.sidebar-toggle-btn) {
+          position: absolute;
+          right: -15px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1rem;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+          z-index: 100;
+          transition: all 0.2s;
+        }
+
+        :global(.sidebar-toggle-btn:hover) {
+          background: #2563eb;
+          transform: translateY(-50%) scale(1.1);
         }
 
         :global(.sidebar-header) {
@@ -616,6 +665,11 @@ export default function CalendarPage() {
           margin-left: 280px;
           flex: 1;
           padding: 2rem;
+          transition: margin-left 0.3s ease;
+        }
+
+        .main-content.sidebar-collapsed {
+          margin-left: 50px;
         }
 
         .calendar-header {
@@ -686,20 +740,34 @@ export default function CalendarPage() {
         .calendar-grid {
           display: grid;
           grid-template-columns: repeat(7, 1fr);
-          gap: 1rem;
+          gap: 0.75rem;
           margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1400px) {
+          .calendar-grid {
+            gap: 0.5rem;
+          }
         }
 
         :global(.calendar-square) {
           aspect-ratio: 1;
           border: 2px solid #e5e7eb;
           border-radius: 8px;
-          padding: 0.75rem;
+          padding: 0.5rem;
           background: white;
           display: flex;
           flex-direction: column;
           cursor: grab;
           transition: all 0.2s;
+          font-size: 0.85rem;
+        }
+
+        @media (max-width: 1400px) {
+          :global(.calendar-square) {
+            padding: 0.4rem;
+            font-size: 0.8rem;
+          }
         }
 
         :global(.calendar-square:active) {
@@ -712,10 +780,17 @@ export default function CalendarPage() {
         }
 
         .calendar-day-number {
-          font-size: 1.2rem;
+          font-size: 1rem;
           font-weight: bold;
           color: #9ca3af;
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.4rem;
+        }
+
+        @media (max-width: 1400px) {
+          .calendar-day-number {
+            font-size: 0.9rem;
+            margin-bottom: 0.3rem;
+          }
         }
 
         .calendar-post-content {
@@ -728,14 +803,21 @@ export default function CalendarPage() {
         :global(.calendar-post-title-link) {
           color: #3b82f6;
           text-decoration: none;
-          font-size: 0.9rem;
+          font-size: 0.8rem;
           font-weight: 500;
           line-height: 1.3;
           overflow: hidden;
           text-overflow: ellipsis;
           display: -webkit-box;
-          -webkit-line-clamp: 3;
+          -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
+        }
+
+        @media (max-width: 1400px) {
+          :global(.calendar-post-title-link) {
+            font-size: 0.75rem;
+            -webkit-line-clamp: 2;
+          }
         }
 
         :global(.calendar-post-title-link:hover) {
@@ -744,14 +826,21 @@ export default function CalendarPage() {
 
         .calendar-post-title {
           color: #374151;
-          font-size: 0.9rem;
+          font-size: 0.8rem;
           font-weight: 500;
           line-height: 1.3;
           overflow: hidden;
           text-overflow: ellipsis;
           display: -webkit-box;
-          -webkit-line-clamp: 3;
+          -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
+        }
+
+        @media (max-width: 1400px) {
+          .calendar-post-title {
+            font-size: 0.75rem;
+            -webkit-line-clamp: 2;
+          }
         }
 
         .calendar-approval-buttons {
@@ -761,14 +850,21 @@ export default function CalendarPage() {
         }
 
         :global(.calendar-approval-btn) {
-          padding: 0.4rem 0.6rem;
+          padding: 0.3rem 0.5rem;
           border: 2px solid #e5e7eb;
-          border-radius: 6px;
+          border-radius: 4px;
           background: white;
-          font-size: 1.2rem;
+          font-size: 1rem;
           cursor: pointer;
           transition: all 0.2s;
           opacity: 0.4;
+        }
+
+        @media (max-width: 1400px) {
+          :global(.calendar-approval-btn) {
+            padding: 0.25rem 0.4rem;
+            font-size: 0.9rem;
+          }
         }
 
         :global(.calendar-approval-btn:hover) {
