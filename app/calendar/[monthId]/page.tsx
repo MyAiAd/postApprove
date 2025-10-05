@@ -109,8 +109,8 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
     opacity: isDragging ? 0.5 : 1,
   }
   
-  // Only draggable if there's a campaign (including blank campaigns with DB records)
-  const dragHandlers = day.campaign ? listeners : {}
+  // All squares are draggable - blank campaigns have DB records too
+  const dragHandlers = listeners
 
   const [titleApproved, setTitleApproved] = useState<boolean | null>(
     day.campaign?.title_approved ?? null
