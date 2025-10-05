@@ -288,10 +288,6 @@ export default function CalendarPage() {
   }
 
   const handleApproveAll = async () => {
-    if (!confirm('Are you sure you want to approve all posts in this calendar?')) {
-      return
-    }
-
     setApproving(true)
     try {
       const campaignIds = days
@@ -316,10 +312,6 @@ export default function CalendarPage() {
   }
 
   const handleDisapproveAll = async () => {
-    if (!confirm('Are you sure you want to disapprove all posts in this calendar?')) {
-      return
-    }
-
     setApproving(true)
     try {
       const campaignIds = days
@@ -344,10 +336,6 @@ export default function CalendarPage() {
   }
 
   const handleResetAll = async () => {
-    if (!confirm('Are you sure you want to reset all approval statuses in this calendar?')) {
-      return
-    }
-
     setApproving(true)
     try {
       const campaignIds = days
