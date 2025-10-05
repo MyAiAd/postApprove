@@ -266,46 +266,70 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
         ) : (
           // Regular campaign with content
           <div className="calendar-post-content">
-            {day.hasDetail ? (
-              <a
-                href={`/approve/${day.campaign.id}`}
-                className="calendar-post-title-link"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {day.campaign.name}
-              </a>
-            ) : (
-              <div className="calendar-post-title">
-                {day.campaign.name}
-              </div>
-            )}
+            <div style={{ flex: 1, minHeight: 0 }}>
+              {day.hasDetail ? (
+                <a
+                  href={`/approve/${day.campaign.id}`}
+                  className="calendar-post-title-link"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {day.campaign.name}
+                </a>
+              ) : (
+                <div className="calendar-post-title">
+                  {day.campaign.name}
+                </div>
+              )}
+            </div>
             
-            <div className="calendar-approval-buttons">
+            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div className="calendar-approval-buttons">
+                <button
+                  type="button"
+                  className={`calendar-approval-btn ${titleApproved === true ? 'approved' : ''}`}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleApprovalChange(true)
+                  }}
+                >
+                  ✅
+                </button>
+                <button
+                  type="button"
+                  className={`calendar-approval-btn ${titleApproved === false ? 'disapproved' : ''}`}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleApprovalChange(false)
+                  }}
+                >
+                  ❌
+                </button>
+              </div>
+              
               <button
-                type="button"
-                className={`calendar-approval-btn ${titleApproved === true ? 'approved' : ''}`}
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation()
-                  handleApprovalChange(true)
+                  if (confirm(`Permanently delete "${day.campaign!.name}"? This will shift all posts after it left.`)) {
+                    try {
+                      // Delete the campaign and all its posts
+                      await supabase.from('campaigns').delete().eq('id', day.campaign!.id)
+                      window.location.reload()
+                    } catch (error) {
+                      console.error('Error deleting:', error)
+                      alert('Error deleting: ' + error)
+                    }
+                  }
                 }}
+                className="delete-inline-btn"
+                title="Delete permanently"
               >
-                ✅
-              </button>
-              <button
-                type="button"
-                className={`calendar-approval-btn ${titleApproved === false ? 'disapproved' : ''}`}
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleApprovalChange(false)
-                }}
-              >
-                ❌
+                🗑️
               </button>
             </div>
           </div>
