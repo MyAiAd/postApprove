@@ -215,22 +215,36 @@ export default function CalendarPage() {
     )
 
     if (oldIndex !== -1 && newIndex !== -1) {
+      // Move the campaigns in the array
       const newDays = arrayMove(days, oldIndex, newIndex)
-      setDays(newDays)
+      
+      // Update day numbers to match new positions
+      const updatedDays = newDays.map((day, index) => ({
+        ...day,
+        dayNumber: index + 1
+      }))
+      
+      setDays(updatedDays)
 
-      // Update day_number in database
-      const movedCampaign = newDays[newIndex].campaign
-      if (movedCampaign) {
-        const { error } = await supabase
-          .from('campaigns')
-          .update({ day_number: newIndex + 1 })
-          .eq('id', movedCampaign.id)
+      // Update day_number in database for all campaigns that have them
+      const updatePromises = updatedDays
+        .filter(day => day.campaign)
+        .map(async (day) => {
+          const { error } = await supabase
+            .from('campaigns')
+            .update({ day_number: day.dayNumber })
+            .eq('id', day.campaign!.id)
 
-        if (error) {
-          console.error('Error updating day number:', error)
-          loadCalendarData() // Reload on error
-        }
-      }
+          if (error) {
+            console.error('Error updating day number:', error)
+          }
+        })
+
+      await Promise.all(updatePromises)
+        .catch(() => {
+          // Reload on error
+          loadCalendarData()
+        })
     }
   }
 
