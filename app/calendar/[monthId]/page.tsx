@@ -130,6 +130,9 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
               <button
                 type="button"
                 className={`calendar-approval-btn ${titleApproved === true ? 'approved' : ''}`}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation()
                   handleApprovalChange(true)
@@ -140,6 +143,9 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
               <button
                 type="button"
                 className={`calendar-approval-btn ${titleApproved === false ? 'disapproved' : ''}`}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation()
                   handleApprovalChange(false)
