@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase, Calendar, Campaign } from '@/lib/supabase'
+import { v4 as uuidv4 } from 'uuid'
 import {
   DndContext,
   closestCenter,
@@ -398,22 +399,43 @@ export default function CalendarPage() {
     )
     const overIsSidebar = overId === 'sidebar'
     
-    // Blank template -> Calendar day (convert existing post to blank)
+    // Blank template -> Calendar day
     if (activeId === 'blank-template' && overCalendarIndex !== -1) {
       const targetDay = days[overCalendarIndex]
       const targetPost = targetDay.campaign
       
       if (targetPost) {
-        // Update existing post to be blank
+        // If target has non-blank content, move it to sidebar first
+        if (targetPost.name !== 'blank') {
+          await supabase.from('campaigns').update({ 
+            calendar_id: null, 
+            day_number: null 
+          }).eq('id', targetPost.id)
+        }
+        
+        // Now update this post to be blank (or it already was blank, so just confirm)
         await supabase.from('campaigns').update({ 
           name: 'blank',
           instructions: '',
           title_approved: true,
-          body_approved: true
+          body_approved: true,
+          calendar_id: monthId,
+          day_number: targetDay.dayNumber
         }).eq('id', targetPost.id)
-        
-        loadCalendarData()
+      } else {
+        // No campaign exists for this day, create a blank one
+        await supabase.from('campaigns').insert({
+          id: uuidv4(),
+          calendar_id: monthId,
+          day_number: targetDay.dayNumber,
+          name: 'blank',
+          instructions: '',
+          title_approved: true,
+          body_approved: true
+        })
       }
+      
+      loadCalendarData()
       return
     }
 
@@ -448,10 +470,16 @@ export default function CalendarPage() {
     if (activeCalendarIndex !== -1 && overIsSidebar) {
       const activePost = days[activeCalendarIndex].campaign
       if (activePost) {
-        await supabase.from('campaigns').update({ 
-          calendar_id: null, 
-          day_number: null 
-        }).eq('id', activePost.id)
+        // If it's a blank, delete it entirely
+        if (activePost.name === 'blank') {
+          await supabase.from('campaigns').delete().eq('id', activePost.id)
+        } else {
+          // If it's real content, move it to sidebar (unassign from calendar)
+          await supabase.from('campaigns').update({ 
+            calendar_id: null, 
+            day_number: null 
+          }).eq('id', activePost.id)
+        }
         loadCalendarData()
       }
       return
