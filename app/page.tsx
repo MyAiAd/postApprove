@@ -34,10 +34,18 @@ export default function UploadPage() {
   
   // Calendar state
   const [calendarName, setCalendarName] = useState('')
-  const [calendarMonth, setCalendarMonth] = useState('')
+  const [calendarMonth, setCalendarMonth] = useState('2025-10')
   const [calendarText, setCalendarText] = useState('')
   const [creatingCalendar, setCreatingCalendar] = useState(false)
   const [calendarMessage, setCalendarMessage] = useState('')
+  
+  // Helper function to get days in month
+  const getDaysInMonth = (yearMonth: string): number => {
+    const [year, month] = yearMonth.split('-').map(Number)
+    return new Date(year, month, 0).getDate()
+  }
+  
+  const expectedDays = getDaysInMonth(calendarMonth)
   
   // Data state
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
@@ -320,8 +328,9 @@ export default function UploadPage() {
         .map(line => line.trim())
         .filter(line => line.length > 0)
 
-      if (lines.length !== 31) {
-        setCalendarMessage(`Error: Expected 31 titles, but got ${lines.length}. Please provide exactly 31 lines of text.`)
+      const daysInMonth = getDaysInMonth(calendarMonth)
+      if (lines.length !== daysInMonth) {
+        setCalendarMessage(`Error: Expected ${daysInMonth} titles for ${calendarMonth}, but got ${lines.length}. Please provide exactly ${daysInMonth} lines of text.`)
         setCreatingCalendar(false)
         return
       }
@@ -338,7 +347,7 @@ export default function UploadPage() {
 
       if (calendarError) throw calendarError
 
-      // Create 31 campaigns (posts) with titles
+      // Create campaigns (posts) with titles for each day of the month
       const campaignPromises = lines.map(async (title, index) => {
         const { error: campaignError } = await supabase
           .from('campaigns')
@@ -453,33 +462,47 @@ export default function UploadPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="calendarMonth">Month (YYYY-MM):</label>
-            <input
-              type="text"
+            <label htmlFor="calendarMonth">Month:</label>
+            <select
               id="calendarMonth"
               value={calendarMonth}
               onChange={(e) => setCalendarMonth(e.target.value)}
-              placeholder="e.g., 2025-01"
-              pattern="\d{4}-\d{2}"
               required
-            />
+              style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #d1d5db' }}
+            >
+              <option value="2025-10">October 2025 (31 days)</option>
+              <option value="2025-11">November 2025 (30 days)</option>
+              <option value="2025-12">December 2025 (31 days)</option>
+              <option value="2026-01">January 2026 (31 days)</option>
+              <option value="2026-02">February 2026 (28 days)</option>
+              <option value="2026-03">March 2026 (31 days)</option>
+              <option value="2026-04">April 2026 (30 days)</option>
+              <option value="2026-05">May 2026 (31 days)</option>
+              <option value="2026-06">June 2026 (30 days)</option>
+              <option value="2026-07">July 2026 (31 days)</option>
+              <option value="2026-08">August 2026 (31 days)</option>
+              <option value="2026-09">September 2026 (30 days)</option>
+              <option value="2026-10">October 2026 (31 days)</option>
+              <option value="2026-11">November 2026 (30 days)</option>
+              <option value="2026-12">December 2026 (31 days)</option>
+            </select>
           </div>
 
           <div className="form-group">
             <label htmlFor="calendarText">
-              Paste 31 Post Titles (one per line):
+              Paste {expectedDays} Post Titles (one per line):
             </label>
             <textarea
               id="calendarText"
               value={calendarText}
               onChange={(e) => setCalendarText(e.target.value)}
-              placeholder="Paste 31 lines of text from ChatGPT...&#10;Line 1: First post title&#10;Line 2: Second post title&#10;...&#10;Line 31: Thirty-first post title"
+              placeholder={`Paste ${expectedDays} lines of text from ChatGPT...\nLine 1: First post title\nLine 2: Second post title\n...\nLine ${expectedDays}: ${expectedDays === 28 ? 'Twenty-eighth' : expectedDays === 29 ? 'Twenty-ninth' : expectedDays === 30 ? 'Thirtieth' : 'Thirty-first'} post title`}
               rows={10}
               required
               style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}
             />
             <p style={{ marginTop: '0.5rem', color: '#6b7280', fontSize: '0.85rem' }}>
-              {calendarText.split('\n').filter(l => l.trim()).length} / 31 titles
+              {calendarText.split('\n').filter(l => l.trim()).length} / {expectedDays} titles
             </p>
           </div>
 
