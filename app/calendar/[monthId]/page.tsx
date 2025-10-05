@@ -549,7 +549,7 @@ export default function CalendarPage() {
           background: #f9fafb;
           border-right: 1px solid #e5e7eb;
           padding: 1.5rem;
-          padding-top: 5rem;
+          padding-top: 5rem; /* Push content below logo */
           overflow-y: auto;
           position: fixed;
           height: 100vh;
