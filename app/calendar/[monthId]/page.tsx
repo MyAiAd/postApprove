@@ -124,7 +124,7 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
               <label className="calendar-radio-label" onClick={(e) => e.stopPropagation()}>
                 <input
                   type="radio"
-                  name={`approval-${day.campaign.id}`}
+                  name={`approval-day-${day.dayNumber}-${day.campaign.id}`}
                   checked={titleApproved === true}
                   onChange={() => handleApprovalChange(true)}
                 />
@@ -133,7 +133,7 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
               <label className="calendar-radio-label" onClick={(e) => e.stopPropagation()}>
                 <input
                   type="radio"
-                  name={`approval-${day.campaign.id}`}
+                  name={`approval-day-${day.dayNumber}-${day.campaign.id}`}
                   checked={titleApproved === false}
                   onChange={() => handleApprovalChange(false)}
                 />
