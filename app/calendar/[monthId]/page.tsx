@@ -156,6 +156,13 @@ function SidebarPost({ post }: { post: Campaign }) {
 
 // Sortable Calendar Square Component
 function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: string }) {
+  // Log any suspicious campaigns
+  if (day.campaign && !day.campaign.id) {
+    console.error('Campaign without ID detected!', day.campaign)
+  }
+  
+  const campaignId = day.campaign?.id || `empty-${day.dayNumber}`
+  
   const {
     attributes,
     listeners,
@@ -164,10 +171,15 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
     transition,
     isDragging,
   } = useSortable({ 
-    id: day.campaign?.id || `empty-${day.dayNumber}`,
+    id: campaignId,
     // Don't disable - we want empty squares to be drop targets
     disabled: false
   })
+  
+  // Log when blank is detected
+  if (day.campaign?.name === 'blank') {
+    console.log('Blank at position', day.dayNumber, 'with ID:', campaignId)
+  }
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -224,13 +236,40 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
         day.campaign.name === 'blank' ? (
           // Blank campaign - show clickable "blank" text, no approval buttons
           <div className="calendar-post-content">
-            <a
-              href={`/calendar/${calendarId}/add/${day.dayNumber}`}
-              className="calendar-blank-link"
-              onClick={(e) => e.stopPropagation()}
-            >
-              blank
-            </a>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <a
+                href={`/calendar/${calendarId}/add/${day.dayNumber}`}
+                className="calendar-blank-link"
+                onClick={(e) => e.stopPropagation()}
+              >
+                blank
+              </a>
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation()
+                  if (confirm('Delete this blank and shift posts left?')) {
+                    try {
+                      await supabase.from('campaigns').delete().eq('id', day.campaign!.id)
+                      window.location.reload()
+                    } catch (error) {
+                      console.error('Error deleting blank:', error)
+                      alert('Error deleting blank: ' + error)
+                    }
+                  }
+                }}
+                style={{
+                  fontSize: '0.7rem',
+                  padding: '0.2rem 0.4rem',
+                  background: '#fee2e2',
+                  border: '1px solid #dc2626',
+                  borderRadius: '3px',
+                  color: '#dc2626',
+                  cursor: 'pointer'
+                }}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         ) : (
           // Regular campaign with content
