@@ -360,16 +360,12 @@ export default function CalendarPage() {
         })
       )
 
-      // Create 31 days array
-      const daysArray: CalendarDay[] = []
-      for (let i = 1; i <= 31; i++) {
-        const campaignData = campaignsWithDetail.find(c => c.campaign.day_number === i)
-        daysArray.push({
-          dayNumber: i,
-          campaign: campaignData?.campaign || null,
-          hasDetail: campaignData?.hasDetail || false
-        })
-      }
+      // Create dynamic days array based on actual campaigns (not fixed 31 days)
+      const daysArray: CalendarDay[] = campaignsWithDetail.map(({ campaign, hasDetail }) => ({
+        dayNumber: campaign.day_number!,
+        campaign: campaign,
+        hasDetail: hasDetail
+      }))
 
       setDays(daysArray)
     } catch (error: any) {
@@ -399,40 +395,62 @@ export default function CalendarPage() {
     )
     const overIsSidebar = overId === 'sidebar'
     
-    // Blank template -> Calendar day
+    // Blank template -> Calendar day (insert and shift right)
     if (activeId === 'blank-template' && overCalendarIndex !== -1) {
       const targetDay = days[overCalendarIndex]
+      const targetDayNumber = targetDay.dayNumber
       const targetPost = targetDay.campaign
       
-      if (targetPost) {
+      try {
         // If target has non-blank content, move it to sidebar first
-        if (targetPost.name !== 'blank') {
+        if (targetPost && targetPost.name !== 'blank') {
           await supabase.from('campaigns').update({ 
             calendar_id: null, 
             day_number: null 
           }).eq('id', targetPost.id)
         }
         
-        // Now update this post to be blank (or it already was blank, so just confirm)
-        await supabase.from('campaigns').update({ 
-          name: 'blank',
-          instructions: '',
-          title_approved: true,
-          body_approved: true,
-          calendar_id: monthId,
-          day_number: targetDay.dayNumber
-        }).eq('id', targetPost.id)
-      } else {
-        // No campaign exists for this day, create a blank one
-        await supabase.from('campaigns').insert({
-          id: uuidv4(),
-          calendar_id: monthId,
-          day_number: targetDay.dayNumber,
-          name: 'blank',
-          instructions: '',
-          title_approved: true,
-          body_approved: true
-        })
+        // Shift all campaigns at and after this position to the right
+        const campaignsToShift = days
+          .filter(d => d.campaign && d.dayNumber >= targetDayNumber)
+          .map(d => d.campaign!.id)
+        
+        if (campaignsToShift.length > 0) {
+          // We need to shift in reverse order to avoid conflicts
+          const sortedDays = [...days]
+            .filter(d => d.campaign && d.dayNumber >= targetDayNumber)
+            .sort((a, b) => b.dayNumber - a.dayNumber) // Descending order
+          
+          for (const day of sortedDays) {
+            await supabase.from('campaigns')
+              .update({ day_number: day.dayNumber + 1 })
+              .eq('id', day.campaign!.id)
+          }
+        }
+        
+        // Now insert or update to create blank at target position
+        if (targetPost) {
+          await supabase.from('campaigns').update({ 
+            name: 'blank',
+            instructions: '',
+            title_approved: true,
+            body_approved: true,
+            calendar_id: monthId,
+            day_number: targetDayNumber
+          }).eq('id', targetPost.id)
+        } else {
+          await supabase.from('campaigns').insert({
+            id: uuidv4(),
+            calendar_id: monthId,
+            day_number: targetDayNumber,
+            name: 'blank',
+            instructions: '',
+            title_approved: true,
+            body_approved: true
+          })
+        }
+      } catch (error) {
+        console.error('Error inserting blank:', error)
       }
       
       loadCalendarData()
@@ -469,16 +487,44 @@ export default function CalendarPage() {
     // Calendar post -> Sidebar
     if (activeCalendarIndex !== -1 && overIsSidebar) {
       const activePost = days[activeCalendarIndex].campaign
+      const activeDayNumber = days[activeCalendarIndex].dayNumber
+      
       if (activePost) {
-        // If it's a blank, delete it entirely
-        if (activePost.name === 'blank') {
-          await supabase.from('campaigns').delete().eq('id', activePost.id)
-        } else {
-          // If it's real content, move it to sidebar (unassign from calendar)
-          await supabase.from('campaigns').update({ 
-            calendar_id: null, 
-            day_number: null 
-          }).eq('id', activePost.id)
+        try {
+          // If it's a blank, delete it and shift everything left
+          if (activePost.name === 'blank') {
+            await supabase.from('campaigns').delete().eq('id', activePost.id)
+            
+            // Shift all campaigns after this position to the left
+            const campaignsToShift = days
+              .filter(d => d.campaign && d.dayNumber > activeDayNumber)
+              .sort((a, b) => a.dayNumber - b.dayNumber) // Ascending order
+            
+            for (const day of campaignsToShift) {
+              await supabase.from('campaigns')
+                .update({ day_number: day.dayNumber - 1 })
+                .eq('id', day.campaign!.id)
+            }
+          } else {
+            // If it's real content, move it to sidebar (unassign from calendar)
+            await supabase.from('campaigns').update({ 
+              calendar_id: null, 
+              day_number: null 
+            }).eq('id', activePost.id)
+            
+            // Shift all campaigns after this position to the left
+            const campaignsToShift = days
+              .filter(d => d.campaign && d.dayNumber > activeDayNumber)
+              .sort((a, b) => a.dayNumber - b.dayNumber) // Ascending order
+            
+            for (const day of campaignsToShift) {
+              await supabase.from('campaigns')
+                .update({ day_number: day.dayNumber - 1 })
+                .eq('id', day.campaign!.id)
+            }
+          }
+        } catch (error) {
+          console.error('Error removing from calendar:', error)
         }
         loadCalendarData()
       }
@@ -895,7 +941,7 @@ export default function CalendarPage() {
 
         .calendar-grid {
           display: grid;
-          grid-template-columns: repeat(7, 1fr);
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
           gap: 0.75rem;
           margin-bottom: 2rem;
         }
@@ -903,6 +949,7 @@ export default function CalendarPage() {
         @media (max-width: 1400px) {
           .calendar-grid {
             gap: 0.5rem;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
           }
         }
 
