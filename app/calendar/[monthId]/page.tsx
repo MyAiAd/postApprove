@@ -376,6 +376,8 @@ export default function CalendarPage() {
 
     // Calendar -> Calendar (swap positions)
     if (activeCalendarIndex !== -1 && overCalendarIndex !== -1 && activeId !== overId) {
+      console.log('Calendar to calendar drag:', { activeId, overId, activeCalendarIndex, overCalendarIndex })
+      
       const newDays = arrayMove(days, activeCalendarIndex, overCalendarIndex)
       const updatedDays = newDays.map((day, index) => ({
         ...day,
@@ -387,13 +389,22 @@ export default function CalendarPage() {
       const updatePromises = updatedDays
         .filter(day => day.campaign)
         .map(async (day) => {
-          await supabase
+          console.log(`Updating campaign ${day.campaign!.id} to day ${day.dayNumber}`)
+          const { error } = await supabase
             .from('campaigns')
             .update({ day_number: day.dayNumber })
             .eq('id', day.campaign!.id)
+          
+          if (error) {
+            console.error('Error updating day number:', error)
+            throw error
+          }
         })
 
-      await Promise.all(updatePromises).catch(() => loadCalendarData())
+      await Promise.all(updatePromises).catch((error) => {
+        console.error('Error in batch update:', error)
+        loadCalendarData()
+      })
     }
   }
 
