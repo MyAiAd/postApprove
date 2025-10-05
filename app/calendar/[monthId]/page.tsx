@@ -27,6 +27,40 @@ interface CalendarDay {
   hasDetail: boolean
 }
 
+// Blank Day Component (reusable)
+function BlankDayCard() {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ 
+    id: 'blank-template',
+    disabled: false
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="sidebar-post-card blank-card"
+      {...attributes}
+      {...listeners}
+    >
+      <div className="sidebar-post-title">📋 Blank Day</div>
+      <div className="sidebar-post-subtitle">Drag to mark as blank</div>
+    </div>
+  )
+}
+
 // Sidebar Posts Component
 function SidebarPostsList({ posts, collapsed, onToggle }: { posts: Campaign[]; collapsed: boolean; onToggle: () => void }) {
   const {
@@ -37,7 +71,7 @@ function SidebarPostsList({ posts, collapsed, onToggle }: { posts: Campaign[]; c
   })
 
   return (
-    <div ref={setNodeRef} className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+    <div className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <button 
         className="sidebar-toggle-btn" 
         onClick={onToggle}
@@ -46,19 +80,28 @@ function SidebarPostsList({ posts, collapsed, onToggle }: { posts: Campaign[]; c
         {collapsed ? '→' : '←'}
       </button>
       
+      {/* Always keep drop zone active */}
+      <div ref={setNodeRef} className="sidebar-drop-zone">
+        {collapsed && <div className="collapsed-drop-indicator">Drop here</div>}
+      </div>
+      
       {!collapsed && (
         <>
           <div className="sidebar-header">
-            <h3>Individual Posts</h3>
+            <h3>Tools</h3>
             <p className="sidebar-subtitle">Drag to calendar</p>
           </div>
           <div className="sidebar-posts">
-            {posts.length === 0 ? (
-              <p className="sidebar-empty">No individual posts</p>
-            ) : (
-              posts.map(post => (
-                <SidebarPost key={post.id} post={post} />
-              ))
+            <BlankDayCard />
+            
+            {posts.length > 0 && (
+              <>
+                <div className="sidebar-divider" />
+                <div className="sidebar-section-title">Individual Posts</div>
+                {posts.map(post => (
+                  <SidebarPost key={post.id} post={post} />
+                ))}
+              </>
             )}
           </div>
         </>
@@ -256,7 +299,8 @@ export default function CalendarPage() {
   const allDraggableIds = [
     ...days.map(d => d.campaign?.id || `empty-${d.dayNumber}`),
     ...individualPosts.map(p => p.id),
-    'sidebar' // Drop zone for returning to sidebar
+    'sidebar', // Drop zone for returning to sidebar
+    'blank-template' // Reusable blank day
   ]
 
   useEffect(() => {
@@ -348,6 +392,25 @@ export default function CalendarPage() {
       d.campaign?.id === overId || `empty-${d.dayNumber}` === overId
     )
     const overIsSidebar = overId === 'sidebar'
+    
+    // Blank template -> Calendar day (convert existing post to blank)
+    if (activeId === 'blank-template' && overCalendarIndex !== -1) {
+      const targetDay = days[overCalendarIndex]
+      const targetPost = targetDay.campaign
+      
+      if (targetPost) {
+        // Update existing post to be blank
+        await supabase.from('campaigns').update({ 
+          name: 'blank',
+          instructions: '',
+          title_approved: true,
+          body_approved: true
+        }).eq('id', targetPost.id)
+        
+        loadCalendarData()
+      }
+      return
+    }
 
     // Sidebar post -> Calendar day
     if (activeSidebarPost && overCalendarIndex !== -1) {
@@ -578,6 +641,28 @@ export default function CalendarPage() {
         :global(.sidebar.collapsed) {
           width: 50px;
           padding: 1.5rem 0.5rem;
+          overflow: visible;
+        }
+
+        :global(.sidebar-drop-zone) {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          pointer-events: all;
+        }
+
+        :global(.collapsed-drop-indicator) {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(-90deg);
+          color: #9ca3af;
+          font-size: 0.7rem;
+          white-space: nowrap;
+          pointer-events: none;
+          user-select: none;
         }
 
         :global(.sidebar-toggle-btn) {
@@ -645,6 +730,16 @@ export default function CalendarPage() {
           transition: all 0.2s;
         }
 
+        :global(.sidebar-post-card.blank-card) {
+          background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+          border: 2px dashed #3b82f6;
+        }
+
+        :global(.sidebar-post-card.blank-card:hover) {
+          background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+          border-color: #2563eb;
+        }
+
         :global(.sidebar-post-card:hover) {
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
           border-color: #3b82f6;
@@ -659,6 +754,27 @@ export default function CalendarPage() {
           font-weight: 500;
           color: #374151;
           line-height: 1.4;
+        }
+
+        :global(.sidebar-post-subtitle) {
+          font-size: 0.75rem;
+          color: #6b7280;
+          margin-top: 0.25rem;
+        }
+
+        :global(.sidebar-divider) {
+          height: 1px;
+          background: #e5e7eb;
+          margin: 1rem 0;
+        }
+
+        :global(.sidebar-section-title) {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 0.5rem;
         }
 
         .main-content {
