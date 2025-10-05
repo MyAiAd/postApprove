@@ -47,9 +47,6 @@ function CalendarSquare({ day }: { day: CalendarDay }) {
     transition,
     opacity: isDragging ? 0.5 : 1,
   }
-  
-  // Only apply drag listeners if there's a post
-  const dragListeners = day.campaign ? listeners : {}
 
   const [titleApproved, setTitleApproved] = useState<boolean | null>(
     day.campaign?.title_approved || null
@@ -78,7 +75,7 @@ function CalendarSquare({ day }: { day: CalendarDay }) {
       style={style}
       className="calendar-square"
       {...attributes}
-      {...dragListeners}
+      {...listeners}
     >
       <div className="calendar-day-number">{day.dayNumber}</div>
       
