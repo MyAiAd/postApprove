@@ -38,7 +38,8 @@ function CalendarSquare({ day }: { day: CalendarDay }) {
     isDragging,
   } = useSortable({ 
     id: day.campaign?.id || `empty-${day.dayNumber}`,
-    disabled: !day.campaign // Only enable drag if there's a post
+    // Don't disable - we want empty squares to be drop targets
+    disabled: false
   })
 
   const style = {
@@ -46,6 +47,9 @@ function CalendarSquare({ day }: { day: CalendarDay }) {
     transition,
     opacity: isDragging ? 0.5 : 1,
   }
+  
+  // Only apply drag listeners if there's a post
+  const dragListeners = day.campaign ? listeners : {}
 
   const [titleApproved, setTitleApproved] = useState<boolean | null>(
     day.campaign?.title_approved || null
@@ -74,7 +78,7 @@ function CalendarSquare({ day }: { day: CalendarDay }) {
       style={style}
       className="calendar-square"
       {...attributes}
-      {...listeners}
+      {...dragListeners}
     >
       <div className="calendar-day-number">{day.dayNumber}</div>
       
