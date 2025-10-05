@@ -121,24 +121,26 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
             )}
             
             <div className="calendar-approval-buttons">
-              <label className="calendar-radio-label" onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="radio"
-                  name={`approval-day-${day.dayNumber}-${day.campaign.id}`}
-                  checked={titleApproved === true}
-                  onChange={() => handleApprovalChange(true)}
-                />
-                <span>✅</span>
-              </label>
-              <label className="calendar-radio-label" onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="radio"
-                  name={`approval-day-${day.dayNumber}-${day.campaign.id}`}
-                  checked={titleApproved === false}
-                  onChange={() => handleApprovalChange(false)}
-                />
-                <span>❌</span>
-              </label>
+              <button
+                type="button"
+                className={`calendar-approval-btn ${titleApproved === true ? 'approved' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleApprovalChange(true)
+                }}
+              >
+                ✅
+              </button>
+              <button
+                type="button"
+                className={`calendar-approval-btn ${titleApproved === false ? 'disapproved' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleApprovalChange(false)
+                }}
+              >
+                ❌
+              </button>
             </div>
           </div>
         )
@@ -442,18 +444,32 @@ export default function CalendarPage() {
           margin-top: 0.5rem;
         }
 
-        :global(.calendar-radio-label) {
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-          cursor: pointer;
+        :global(.calendar-approval-btn) {
+          padding: 0.4rem 0.6rem;
+          border: 2px solid #e5e7eb;
+          border-radius: 6px;
+          background: white;
           font-size: 1.2rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          opacity: 0.4;
         }
 
-        :global(.calendar-radio-label input[type="radio"]) {
-          width: 16px;
-          height: 16px;
-          cursor: pointer;
+        :global(.calendar-approval-btn:hover) {
+          opacity: 0.7;
+          border-color: #3b82f6;
+        }
+
+        :global(.calendar-approval-btn.approved) {
+          opacity: 1;
+          background: #dcfce7;
+          border-color: #22c55e;
+        }
+
+        :global(.calendar-approval-btn.disapproved) {
+          opacity: 1;
+          background: #fee2e2;
+          border-color: #ef4444;
         }
 
         .calendar-empty {
