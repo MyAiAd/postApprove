@@ -27,6 +27,67 @@ interface CalendarDay {
   hasDetail: boolean
 }
 
+// Sidebar Posts Component
+function SidebarPostsList({ posts }: { posts: Campaign[] }) {
+  const {
+    setNodeRef,
+  } = useSortable({ 
+    id: 'sidebar',
+    disabled: false
+  })
+
+  return (
+    <div ref={setNodeRef} className="sidebar">
+      <div className="sidebar-header">
+        <h3>Individual Posts</h3>
+        <p className="sidebar-subtitle">Drag to calendar</p>
+      </div>
+      <div className="sidebar-posts">
+        {posts.length === 0 ? (
+          <p className="sidebar-empty">No individual posts</p>
+        ) : (
+          posts.map(post => (
+            <SidebarPost key={post.id} post={post} />
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Individual sidebar post item
+function SidebarPost({ post }: { post: Campaign }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ 
+    id: post.id,
+    disabled: false
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="sidebar-post-card"
+      {...attributes}
+      {...listeners}
+    >
+      <div className="sidebar-post-title">{post.name}</div>
+    </div>
+  )
+}
+
 // Sortable Calendar Square Component
 function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: string }) {
   const {
@@ -171,6 +232,7 @@ export default function CalendarPage() {
   
   const [calendar, setCalendar] = useState<Calendar | null>(null)
   const [days, setDays] = useState<CalendarDay[]>([])
+  const [individualPosts, setIndividualPosts] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [approving, setApproving] = useState(false)
@@ -181,6 +243,12 @@ export default function CalendarPage() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
+
+  const allDraggableIds = [
+    ...days.map(d => d.campaign?.id || `empty-${d.dayNumber}`),
+    ...individualPosts.map(p => p.id),
+    'sidebar' // Drop zone for returning to sidebar
+  ]
 
   useEffect(() => {
     loadCalendarData()
@@ -206,6 +274,16 @@ export default function CalendarPage() {
         .order('day_number')
 
       if (campaignsError) throw campaignsError
+
+      // Load individual posts (not in any calendar)
+      const { data: individualPostsData, error: individualError } = await supabase
+        .from('campaigns')
+        .select('*')
+        .is('calendar_id', null)
+        .order('created_at', { ascending: false })
+
+      if (individualError) throw individualError
+      setIndividualPosts(individualPostsData || [])
 
       // Check which campaigns have detail (posts)
       const campaignsWithDetail = await Promise.all(
@@ -246,18 +324,63 @@ export default function CalendarPage() {
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
-    if (!over || active.id === over.id) return
+    if (!over) return
 
-    const oldIndex = days.findIndex(d => d.campaign?.id === active.id)
-    const newIndex = days.findIndex(d => 
-      d.campaign?.id === over.id || `empty-${d.dayNumber}` === over.id
+    const activeId = active.id as string
+    const overId = over.id as string
+
+    // Check if dragging from sidebar or calendar
+    const activeSidebarPost = individualPosts.find(p => p.id === activeId)
+    const activeCalendarIndex = days.findIndex(d => d.campaign?.id === activeId)
+    
+    const overCalendarIndex = days.findIndex(d => 
+      d.campaign?.id === overId || `empty-${d.dayNumber}` === overId
     )
+    const overIsSidebar = overId === 'sidebar'
 
-    if (oldIndex !== -1 && newIndex !== -1) {
-      // Move the campaigns in the array
-      const newDays = arrayMove(days, oldIndex, newIndex)
-      
-      // Update day numbers to match new positions
+    // Sidebar post -> Calendar day
+    if (activeSidebarPost && overCalendarIndex !== -1) {
+      const targetDay = days[overCalendarIndex]
+      const targetPost = targetDay.campaign
+
+      // Swap if target has content, otherwise just place
+      if (targetPost && targetPost.name !== 'blank') {
+        await supabase.from('campaigns').update({ 
+          calendar_id: monthId, 
+          day_number: targetDay.dayNumber 
+        }).eq('id', activeSidebarPost.id)
+
+        await supabase.from('campaigns').update({ 
+          calendar_id: null, 
+          day_number: null 
+        }).eq('id', targetPost.id)
+      } else {
+        await supabase.from('campaigns').update({ 
+          calendar_id: monthId, 
+          day_number: targetDay.dayNumber 
+        }).eq('id', activeSidebarPost.id)
+      }
+
+      loadCalendarData()
+      return
+    }
+
+    // Calendar post -> Sidebar
+    if (activeCalendarIndex !== -1 && overIsSidebar) {
+      const activePost = days[activeCalendarIndex].campaign
+      if (activePost) {
+        await supabase.from('campaigns').update({ 
+          calendar_id: null, 
+          day_number: null 
+        }).eq('id', activePost.id)
+        loadCalendarData()
+      }
+      return
+    }
+
+    // Calendar -> Calendar (swap positions)
+    if (activeCalendarIndex !== -1 && overCalendarIndex !== -1 && activeId !== overId) {
+      const newDays = arrayMove(days, activeCalendarIndex, overCalendarIndex)
       const updatedDays = newDays.map((day, index) => ({
         ...day,
         dayNumber: index + 1
@@ -265,25 +388,16 @@ export default function CalendarPage() {
       
       setDays(updatedDays)
 
-      // Update day_number in database for all campaigns that have them
       const updatePromises = updatedDays
         .filter(day => day.campaign)
         .map(async (day) => {
-          const { error } = await supabase
+          await supabase
             .from('campaigns')
             .update({ day_number: day.dayNumber })
             .eq('id', day.campaign!.id)
-
-          if (error) {
-            console.error('Error updating day number:', error)
-          }
         })
 
-      await Promise.all(updatePromises)
-        .catch(() => {
-          // Reload on error
-          loadCalendarData()
-        })
+      await Promise.all(updatePromises).catch(() => loadCalendarData())
     }
   }
 
@@ -368,61 +482,143 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="container">
-      <div className="calendar-header">
-        <h1 className="calendar-title">{calendar.name}</h1>
-        <p className="calendar-month">{calendar.month}</p>
-        
-        <div className="bulk-actions-container">
-          <button
-            onClick={handleApproveAll}
-            disabled={approving}
-            className="bulk-action-btn approve-all"
-          >
-            ✅ Approve All
-          </button>
-          <button
-            onClick={handleDisapproveAll}
-            disabled={approving}
-            className="bulk-action-btn disapprove-all"
-          >
-            ❌ Disapprove All
-          </button>
-          <button
-            onClick={handleResetAll}
-            disabled={approving}
-            className="bulk-action-btn reset-all"
-          >
-            ↺ Reset All
-          </button>
-        </div>
-        {approving && <p style={{ color: '#6b7280', marginTop: '0.5rem', fontSize: '0.9rem' }}>Processing...</p>}
-      </div>
-
-      {message && (
-        <div className={message.includes('Error') ? 'error' : 'success'}>
-          {message}
-        </div>
-      )}
-
+    <div className="page-container">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={days.map(d => d.campaign?.id || `empty-${d.dayNumber}`)}
+          items={allDraggableIds}
           strategy={rectSortingStrategy}
         >
-          <div className="calendar-grid">
-            {days.map((day) => (
-              <CalendarSquare key={day.dayNumber} day={day} calendarId={monthId} />
-            ))}
+          <SidebarPostsList posts={individualPosts} />
+
+          <div className="main-content">
+            <div className="calendar-header">
+              <h1 className="calendar-title">{calendar.name}</h1>
+              <p className="calendar-month">{calendar.month}</p>
+              
+              <div className="bulk-actions-container">
+                <button
+                  onClick={handleApproveAll}
+                  disabled={approving}
+                  className="bulk-action-btn approve-all"
+                >
+                  ✅ Approve All
+                </button>
+                <button
+                  onClick={handleDisapproveAll}
+                  disabled={approving}
+                  className="bulk-action-btn disapprove-all"
+                >
+                  ❌ Disapprove All
+                </button>
+                <button
+                  onClick={handleResetAll}
+                  disabled={approving}
+                  className="bulk-action-btn reset-all"
+                >
+                  ↺ Reset All
+                </button>
+              </div>
+              {approving && <p style={{ color: '#6b7280', marginTop: '0.5rem', fontSize: '0.9rem' }}>Processing...</p>}
+            </div>
+
+            {message && (
+              <div className={message.includes('Error') ? 'error' : 'success'}>
+                {message}
+              </div>
+            )}
+
+            <div className="calendar-grid">
+              {days.map((day) => (
+                <CalendarSquare key={day.dayNumber} day={day} calendarId={monthId} />
+              ))}
+            </div>
           </div>
         </SortableContext>
       </DndContext>
 
       <style jsx>{`
+        .page-container {
+          display: flex;
+          min-height: 100vh;
+        }
+
+        :global(.sidebar) {
+          width: 280px;
+          background: #f9fafb;
+          border-right: 1px solid #e5e7eb;
+          padding: 1.5rem;
+          overflow-y: auto;
+          position: fixed;
+          height: 100vh;
+          left: 0;
+          top: 0;
+        }
+
+        :global(.sidebar-header) {
+          margin-bottom: 1.5rem;
+        }
+
+        :global(.sidebar-header h3) {
+          font-size: 1.1rem;
+          font-weight: 600;
+          margin: 0 0 0.25rem 0;
+          color: #111827;
+        }
+
+        :global(.sidebar-subtitle) {
+          font-size: 0.85rem;
+          color: #6b7280;
+          margin: 0;
+        }
+
+        :global(.sidebar-posts) {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        :global(.sidebar-empty) {
+          color: #9ca3af;
+          font-size: 0.9rem;
+          text-align: center;
+          padding: 2rem 0;
+        }
+
+        :global(.sidebar-post-card) {
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          padding: 0.75rem;
+          cursor: grab;
+          transition: all 0.2s;
+        }
+
+        :global(.sidebar-post-card:hover) {
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          border-color: #3b82f6;
+        }
+
+        :global(.sidebar-post-card:active) {
+          cursor: grabbing;
+        }
+
+        :global(.sidebar-post-title) {
+          font-size: 0.9rem;
+          font-weight: 500;
+          color: #374151;
+          line-height: 1.4;
+        }
+
+        .main-content {
+          margin-left: 280px;
+          flex: 1;
+          padding: 2rem;
+        }
+
         .calendar-header {
           text-align: center;
           margin-bottom: 2rem;

@@ -605,8 +605,6 @@ export default function UploadPage() {
                         <span style={{ color: '#6b7280' }}>Calendar URL: </span>
                         <a 
                           href={`${window.location.origin}/calendar/${calendar.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
                           style={{ 
                             color: '#3b82f6', 
                             textDecoration: 'underline',
