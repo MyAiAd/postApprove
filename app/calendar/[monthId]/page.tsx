@@ -327,7 +327,9 @@ export default function CalendarPage() {
 
     // Check if dragging from sidebar or calendar
     const activeSidebarPost = individualPosts.find(p => p.id === activeId)
-    const activeCalendarIndex = days.findIndex(d => d.campaign?.id === activeId)
+    const activeCalendarIndex = days.findIndex(d => 
+      d.campaign?.id === activeId || `empty-${d.dayNumber}` === activeId
+    )
     
     const overCalendarIndex = days.findIndex(d => 
       d.campaign?.id === overId || `empty-${d.dayNumber}` === overId
