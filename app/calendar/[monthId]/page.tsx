@@ -547,12 +547,12 @@ export default function CalendarPage() {
           background: #f9fafb;
           border-right: 1px solid #e5e7eb;
           padding: 1.5rem;
-          padding-top: 7rem; /* Push content below logo */
           overflow-y: auto;
           position: fixed;
           height: 100vh;
           left: 0;
           top: 0;
+          z-index: 10;
         }
 
         :global(.sidebar-header) {
