@@ -91,4 +91,4 @@ FOR SELECT USING (bucket_id = 'posts');
 -- Allow authenticated insert access to posts
 CREATE POLICY "Authenticated insert access" ON storage.objects
 FOR INSERT WITH CHECK (bucket_id = 'posts');
-``` 
+``` # Deployment trigger Sun Oct  5 12:52:18 PM WEST 2025
