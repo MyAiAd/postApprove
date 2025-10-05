@@ -117,7 +117,7 @@ export default function UploadPage() {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('calendar_id', null)
+        .is('calendar_id', null)
         .order('created_at', { ascending: false })
 
       if (error) throw error
