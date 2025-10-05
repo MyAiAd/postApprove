@@ -249,10 +249,78 @@ export default function UploadPage() {
         </div>
       )}
 
-      {/* Side-by-side layout */}
-      <div className="two-column-layout">
-        {/* Existing Posts Section */}
+      {/* TOP ROW: Create Calendar and Create Single Post */}
+      <div className="two-column-layout" style={{ marginBottom: '2rem' }}>
+        {/* Create Calendar Section (STUB) */}
         <div className="upload-form column-left">
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+            Create Calendar
+          </h2>
+          <div style={{ padding: '2rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '2px dashed #d1d5db', textAlign: 'center' }}>
+            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
+              📅 Coming Soon: Paste 31 post titles from ChatGPT
+            </p>
+            <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>
+              Stub: This feature will allow you to create a full monthly calendar with 31 posts at once.
+            </p>
+          </div>
+        </div>
+
+        {/* Create Single Post Section */}
+        <form onSubmit={handleSubmit} className="upload-form column-right">
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+            Create Single Post
+          </h2>
+          <div className="form-group">
+            <label htmlFor="campaignName">Post Title:</label>
+            <input
+              type="text"
+              id="campaignName"
+              value={campaignName}
+              onChange={(e) => setCampaignName(e.target.value)}
+              placeholder="Enter post title"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="instructions">Post Body:</label>
+            <textarea
+              id="instructions"
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              placeholder="Enter the text content for this social media post"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="files">Select Images:</label>
+            <input
+              type="file"
+              id="files"
+              multiple
+              accept="image/*"
+              onChange={handleFileChange}
+              className="file-input"
+              required
+            />
+            {files.length > 0 && (
+              <p style={{ marginTop: '0.5rem', color: '#6b7280' }}>
+                {files.length} file(s) selected
+              </p>
+            )}
+          </div>
+
+          <button type="submit" className="btn" disabled={uploading}>
+            {uploading ? 'Uploading...' : 'Create Post'}
+          </button>
+        </form>
+      </div>
+
+      {/* BOTTOM ROW: Existing Posts (Full Width) */}
+      <div style={{ width: '100%' }}>
+        <div className="upload-form">
           <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
             Existing Posts
           </h2>
@@ -368,57 +436,6 @@ export default function UploadPage() {
             </div>
           )}
         </div>
-
-        {/* Create New Post Section */}
-        <form onSubmit={handleSubmit} className="upload-form column-right">
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-          Create New Post
-        </h2>
-        <div className="form-group">
-          <label htmlFor="campaignName">Post Title:</label>
-          <input
-            type="text"
-            id="campaignName"
-            value={campaignName}
-            onChange={(e) => setCampaignName(e.target.value)}
-            placeholder="Enter post title"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="instructions">Post Body:</label>
-          <textarea
-            id="instructions"
-            value={instructions}
-            onChange={(e) => setInstructions(e.target.value)}
-            placeholder="Enter the text content for this social media post"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="files">Select Images:</label>
-          <input
-            type="file"
-            id="files"
-            multiple
-            accept="image/*"
-            onChange={handleFileChange}
-            className="file-input"
-            required
-          />
-          {files.length > 0 && (
-            <p style={{ marginTop: '0.5rem', color: '#6b7280' }}>
-              {files.length} file(s) selected
-            </p>
-          )}
-        </div>
-
-          <button type="submit" className="btn" disabled={uploading}>
-            {uploading ? 'Uploading...' : 'Create Post'}
-          </button>
-        </form>
       </div>
     </div>
   )

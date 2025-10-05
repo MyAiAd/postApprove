@@ -5,6 +5,15 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+export interface Calendar {
+  id: string
+  name: string
+  month: string
+  created_at: string
+  approval_completed: boolean
+  approval_completed_at: string | null
+}
+
 export interface Campaign {
   id: string
   name: string
@@ -16,6 +25,9 @@ export interface Campaign {
   title_comments: string | null
   body_approved: boolean | null
   body_comments: string | null
+  calendar_id: string | null
+  day_number: number | null
+  assigned_date: string | null
 }
 
 export interface Post {
