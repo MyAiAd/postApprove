@@ -30,6 +30,9 @@ export default function RootLayout({
             />
             <span className="logo-text">MyAi</span>
           </Link>
+          <Link href="/settings" className="settings-link">
+            Settings
+          </Link>
         </header>
         {children}
       </body>
