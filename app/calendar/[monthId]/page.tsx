@@ -294,6 +294,7 @@ export default function CalendarPage() {
   const [message, setMessage] = useState('')
   const [approving, setApproving] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -379,10 +380,14 @@ export default function CalendarPage() {
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
-    if (!over) return
+    if (!over || isDragging) return // Prevent multiple simultaneous operations
+
+    setIsDragging(true)
 
     const activeId = active.id as string
     const overId = over.id as string
+    
+    console.log('Drag end:', { activeId, overId })
 
     // Check if dragging from sidebar or calendar
     const activeSidebarPost = individualPosts.find(p => p.id === activeId)
@@ -401,35 +406,41 @@ export default function CalendarPage() {
       const targetDayNumber = targetDay.dayNumber
       const targetPost = targetDay.campaign
       
+      console.log('Inserting blank at position:', targetDayNumber)
+      
       try {
         // If target has non-blank content, move it to sidebar first
         if (targetPost && targetPost.name !== 'blank') {
+          console.log('Moving existing content to sidebar:', targetPost.id)
           await supabase.from('campaigns').update({ 
             calendar_id: null, 
             day_number: null 
           }).eq('id', targetPost.id)
         }
         
-        // Shift all campaigns at and after this position to the right
+        // Get all campaigns at and after this position (excluding the one we just moved)
         const campaignsToShift = days
-          .filter(d => d.campaign && d.dayNumber >= targetDayNumber)
-          .map(d => d.campaign!.id)
+          .filter(d => d.campaign && d.dayNumber >= targetDayNumber && d.campaign.id !== targetPost?.id)
+          .sort((a, b) => b.dayNumber - a.dayNumber) // Descending order for right shift
         
+        console.log('Campaigns to shift right:', campaignsToShift.length)
+        
+        // Shift in parallel (much faster)
         if (campaignsToShift.length > 0) {
-          // We need to shift in reverse order to avoid conflicts
-          const sortedDays = [...days]
-            .filter(d => d.campaign && d.dayNumber >= targetDayNumber)
-            .sort((a, b) => b.dayNumber - a.dayNumber) // Descending order
-          
-          for (const day of sortedDays) {
-            await supabase.from('campaigns')
-              .update({ day_number: day.dayNumber + 1 })
-              .eq('id', day.campaign!.id)
-          }
+          await Promise.all(
+            campaignsToShift.map(day =>
+              supabase.from('campaigns')
+                .update({ day_number: day.dayNumber + 1 })
+                .eq('id', day.campaign!.id)
+            )
+          )
+          console.log('Shifted', campaignsToShift.length, 'campaigns right')
         }
         
         // Now insert or update to create blank at target position
-        if (targetPost) {
+        if (targetPost && targetPost.name === 'blank') {
+          // It was already a blank, just ensure it's set correctly
+          console.log('Target was already blank, confirming')
           await supabase.from('campaigns').update({ 
             name: 'blank',
             instructions: '',
@@ -439,6 +450,8 @@ export default function CalendarPage() {
             day_number: targetDayNumber
           }).eq('id', targetPost.id)
         } else {
+          // Create new blank
+          console.log('Creating new blank at position:', targetDayNumber)
           await supabase.from('campaigns').insert({
             id: uuidv4(),
             calendar_id: monthId,
@@ -449,11 +462,14 @@ export default function CalendarPage() {
             body_approved: true
           })
         }
+        
+        await loadCalendarData()
       } catch (error) {
         console.error('Error inserting blank:', error)
+        setMessage(`Error: ${error}`)
+      } finally {
+        setIsDragging(false)
       }
-      
-      loadCalendarData()
       return
     }
 
@@ -462,25 +478,32 @@ export default function CalendarPage() {
       const targetDay = days[overCalendarIndex]
       const targetPost = targetDay.campaign
 
-      // Swap if target has content, otherwise just place
-      if (targetPost && targetPost.name !== 'blank') {
-        await supabase.from('campaigns').update({ 
-          calendar_id: monthId, 
-          day_number: targetDay.dayNumber 
-        }).eq('id', activeSidebarPost.id)
+      try {
+        // Swap if target has content, otherwise just place
+        if (targetPost && targetPost.name !== 'blank') {
+          await supabase.from('campaigns').update({ 
+            calendar_id: monthId, 
+            day_number: targetDay.dayNumber 
+          }).eq('id', activeSidebarPost.id)
 
-        await supabase.from('campaigns').update({ 
-          calendar_id: null, 
-          day_number: null 
-        }).eq('id', targetPost.id)
-      } else {
-        await supabase.from('campaigns').update({ 
-          calendar_id: monthId, 
-          day_number: targetDay.dayNumber 
-        }).eq('id', activeSidebarPost.id)
+          await supabase.from('campaigns').update({ 
+            calendar_id: null, 
+            day_number: null 
+          }).eq('id', targetPost.id)
+        } else {
+          await supabase.from('campaigns').update({ 
+            calendar_id: monthId, 
+            day_number: targetDay.dayNumber 
+          }).eq('id', activeSidebarPost.id)
+        }
+
+        await loadCalendarData()
+      } catch (error) {
+        console.error('Error moving sidebar post:', error)
+        setMessage(`Error: ${error}`)
+      } finally {
+        setIsDragging(false)
       }
-
-      loadCalendarData()
       return
     }
 
@@ -489,69 +512,100 @@ export default function CalendarPage() {
       const activePost = days[activeCalendarIndex].campaign
       const activeDayNumber = days[activeCalendarIndex].dayNumber
       
+      console.log('Dragging to sidebar:', { 
+        post: activePost?.name, 
+        isBlank: activePost?.name === 'blank',
+        dayNumber: activeDayNumber 
+      })
+      
       if (activePost) {
         try {
-          // If it's a blank, delete it and shift everything left
-          if (activePost.name === 'blank') {
-            await supabase.from('campaigns').delete().eq('id', activePost.id)
+          const isBlank = activePost.name === 'blank'
+          
+          // Get all campaigns that need to be shifted (before any deletion)
+          const campaignsToShift = days
+            .filter(d => d.campaign && d.dayNumber > activeDayNumber && d.campaign.id !== activePost.id)
+            .sort((a, b) => a.dayNumber - b.dayNumber) // Ascending order
+          
+          console.log('Campaigns to shift:', campaignsToShift.length)
+          
+          // Perform the main action (delete or move to sidebar)
+          if (isBlank) {
+            console.log('Deleting blank:', activePost.id)
+            const { error: deleteError } = await supabase
+              .from('campaigns')
+              .delete()
+              .eq('id', activePost.id)
             
-            // Shift all campaigns after this position to the left
-            const campaignsToShift = days
-              .filter(d => d.campaign && d.dayNumber > activeDayNumber)
-              .sort((a, b) => a.dayNumber - b.dayNumber) // Ascending order
-            
-            for (const day of campaignsToShift) {
-              await supabase.from('campaigns')
-                .update({ day_number: day.dayNumber - 1 })
-                .eq('id', day.campaign!.id)
+            if (deleteError) {
+              console.error('Delete error:', deleteError)
+              throw deleteError
             }
           } else {
-            // If it's real content, move it to sidebar (unassign from calendar)
+            console.log('Moving to sidebar:', activePost.id)
             await supabase.from('campaigns').update({ 
               calendar_id: null, 
               day_number: null 
             }).eq('id', activePost.id)
-            
-            // Shift all campaigns after this position to the left
-            const campaignsToShift = days
-              .filter(d => d.campaign && d.dayNumber > activeDayNumber)
-              .sort((a, b) => a.dayNumber - b.dayNumber) // Ascending order
-            
-            for (const day of campaignsToShift) {
-              await supabase.from('campaigns')
-                .update({ day_number: day.dayNumber - 1 })
-                .eq('id', day.campaign!.id)
-            }
           }
+          
+          // Now shift all campaigns after this position to the left
+          if (campaignsToShift.length > 0) {
+            // Use Promise.all for batch updates (much faster)
+            await Promise.all(
+              campaignsToShift.map(day =>
+                supabase.from('campaigns')
+                  .update({ day_number: day.dayNumber - 1 })
+                  .eq('id', day.campaign!.id)
+              )
+            )
+            console.log('Shifted', campaignsToShift.length, 'campaigns left')
+          }
+          
+          await loadCalendarData()
         } catch (error) {
           console.error('Error removing from calendar:', error)
+          setMessage(`Error: ${error}`)
+        } finally {
+          setIsDragging(false)
         }
-        loadCalendarData()
+      } else {
+        setIsDragging(false)
       }
       return
     }
 
     // Calendar -> Calendar (swap positions)
     if (activeCalendarIndex !== -1 && overCalendarIndex !== -1 && activeId !== overId) {
-      const newDays = arrayMove(days, activeCalendarIndex, overCalendarIndex)
-      const updatedDays = newDays.map((day, index) => ({
-        ...day,
-        dayNumber: index + 1
-      }))
-      
-      setDays(updatedDays)
+      try {
+        const newDays = arrayMove(days, activeCalendarIndex, overCalendarIndex)
+        const updatedDays = newDays.map((day, index) => ({
+          ...day,
+          dayNumber: index + 1
+        }))
+        
+        setDays(updatedDays)
 
-      const updatePromises = updatedDays
-        .filter(day => day.campaign)
-        .map(async (day) => {
-          await supabase
-            .from('campaigns')
-            .update({ day_number: day.dayNumber })
-            .eq('id', day.campaign!.id)
-        })
+        const updatePromises = updatedDays
+          .filter(day => day.campaign)
+          .map(async (day) => {
+            await supabase
+              .from('campaigns')
+              .update({ day_number: day.dayNumber })
+              .eq('id', day.campaign!.id)
+          })
 
-      await Promise.all(updatePromises).catch(() => loadCalendarData())
+        await Promise.all(updatePromises).catch(() => loadCalendarData())
+      } catch (error) {
+        console.error('Error swapping positions:', error)
+      } finally {
+        setIsDragging(false)
+      }
+      return
     }
+    
+    // If we get here, something didn't match - reset the flag
+    setIsDragging(false)
   }
 
   const handleApproveAll = async () => {
@@ -636,6 +690,24 @@ export default function CalendarPage() {
 
   return (
     <div className="page-container">
+      {isDragging && (
+        <div style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '1rem 2rem',
+          borderRadius: '8px',
+          zIndex: 9999,
+          fontSize: '1.1rem',
+          fontWeight: '600'
+        }}>
+          Processing...
+        </div>
+      )}
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
