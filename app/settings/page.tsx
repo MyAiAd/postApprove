@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -9,17 +10,37 @@ export default function SettingsPage() {
   const [savedApiKey, setSavedApiKey] = useState('')
   const [message, setMessage] = useState('')
   const [showKey, setShowKey] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Load API key from localStorage on mount
-    const stored = localStorage.getItem('openai_api_key')
-    if (stored) {
-      setSavedApiKey(stored)
-      setApiKey(stored)
-    }
+    loadApiKey()
   }, [])
 
-  const handleSave = (e: React.FormEvent) => {
+  const loadApiKey = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'openai_api_key')
+        .single()
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+        throw error
+      }
+
+      if (data?.value) {
+        setSavedApiKey(data.value)
+        setApiKey(data.value)
+      }
+    } catch (error: any) {
+      console.error('Error loading API key:', error)
+      setMessage(`Error loading API key: ${error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!apiKey.trim()) {
@@ -33,23 +54,57 @@ export default function SettingsPage() {
       return
     }
 
-    // Save to localStorage
-    localStorage.setItem('openai_api_key', apiKey)
-    setSavedApiKey(apiKey)
-    setMessage('API key saved successfully!')
-    
-    // Clear message after 3 seconds
-    setTimeout(() => setMessage(''), 3000)
+    try {
+      // Save to Supabase using upsert
+      const { error } = await supabase
+        .from('settings')
+        .upsert(
+          { key: 'openai_api_key', value: apiKey.trim() },
+          { onConflict: 'key' }
+        )
+
+      if (error) throw error
+
+      setSavedApiKey(apiKey)
+      setMessage('API key saved successfully!')
+      
+      // Clear message after 3 seconds
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error: any) {
+      console.error('Error saving API key:', error)
+      setMessage(`Error saving API key: ${error.message}`)
+    }
   }
 
-  const handleClear = () => {
-    if (confirm('Are you sure you want to remove your saved API key?')) {
-      localStorage.removeItem('openai_api_key')
+  const handleClear = async () => {
+    if (!confirm('Are you sure you want to remove your saved API key?')) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .delete()
+        .eq('key', 'openai_api_key')
+
+      if (error) throw error
+
       setApiKey('')
       setSavedApiKey('')
       setMessage('API key removed')
       setTimeout(() => setMessage(''), 3000)
+    } catch (error: any) {
+      console.error('Error removing API key:', error)
+      setMessage(`Error removing API key: ${error.message}`)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="container">
+        <div className="loading">Loading settings...</div>
+      </div>
+    )
   }
 
   return (
@@ -102,7 +157,7 @@ export default function SettingsPage() {
               </button>
             </div>
             <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.5rem' }}>
-              Your API key is stored locally in your browser and never sent to our servers.
+              Your API key is stored securely in your Supabase database.
             </p>
           </div>
 

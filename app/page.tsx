@@ -436,18 +436,23 @@ export default function UploadPage() {
       return
     }
 
-    // Check if API key is available
-    const apiKey = typeof window !== 'undefined' ? localStorage.getItem('openai_api_key') : null
-    if (!apiKey) {
-      setAiCalendarMessage('Error: Please configure your OpenAI API key in Settings.')
-      return
-    }
-
     setGeneratingTopics(true)
     setAiCalendarMessage('')
     setGeneratedTopics([])
 
     try {
+      // Fetch API key from Supabase
+      const { data: settingData, error: settingError } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'openai_api_key')
+        .single()
+
+      if (settingError || !settingData?.value) {
+        throw new Error('Please configure your OpenAI API key in Settings.')
+      }
+
+      const apiKey = settingData.value
       const daysInMonth = getDaysInMonth(aiCalendarMonth)
       
       const response = await fetch('https://api.openai.com/v1/chat/completions', {

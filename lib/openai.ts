@@ -1,16 +1,37 @@
 import OpenAI from 'openai'
+import { supabase } from './supabase'
 
 /**
- * Gets the OpenAI client instance using the API key from localStorage
- * Note: This should only be called from client components
+ * Gets the OpenAI API key from Supabase
  */
-export function getOpenAIClient(): OpenAI | null {
-  if (typeof window === 'undefined') {
-    console.error('OpenAI client can only be initialized in the browser')
+export async function getOpenAIKey(): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'openai_api_key')
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // Not found
+        return null
+      }
+      throw error
+    }
+
+    return data?.value || null
+  } catch (error) {
+    console.error('Error fetching OpenAI API key:', error)
     return null
   }
+}
 
-  const apiKey = localStorage.getItem('openai_api_key')
+/**
+ * Gets the OpenAI client instance using the API key from Supabase
+ */
+export async function getOpenAIClient(): Promise<OpenAI | null> {
+  const apiKey = await getOpenAIKey()
   
   if (!apiKey) {
     console.error('OpenAI API key not found. Please set it in Settings.')
@@ -26,16 +47,16 @@ export function getOpenAIClient(): OpenAI | null {
 /**
  * Checks if an OpenAI API key is configured
  */
-export function hasOpenAIKey(): boolean {
-  if (typeof window === 'undefined') return false
-  return !!localStorage.getItem('openai_api_key')
+export async function hasOpenAIKey(): Promise<boolean> {
+  const key = await getOpenAIKey()
+  return !!key
 }
 
 /**
  * Example helper function for generating campaign content
  */
 export async function generateCampaignContent(prompt: string): Promise<string | null> {
-  const client = getOpenAIClient()
+  const client = await getOpenAIClient()
   
   if (!client) {
     throw new Error('OpenAI client not available. Please configure your API key in Settings.')
