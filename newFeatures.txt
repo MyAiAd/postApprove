@@ -1,0 +1,200 @@
+CALENDAR-BASED CONTENT APPROVAL SYSTEM - NEW FEATURES
+======================================================
+
+OVERVIEW:
+---------
+Transform the app from individual post approval to a calendar-based monthly content approval system.
+The system will support a two-phase workflow:
+1. Phase 1 (Planning): Create 31 post titles assigned to a month
+2. Phase 2 (Content Creation): Add images and body to each post, enable full approval
+
+USER WORKFLOW:
+--------------
+1. Create a calendar (month) with 31 post titles
+2. Optionally assign dates to posts (drag & drop - future feature)
+3. Client reviews calendar view and approves/disapproves each title
+4. Later: Add images and body to posts
+5. Client can re-approve from calendar or go to detail page for granular approval
+
+CALENDAR VIEW PAGE - /calendar/[monthId]
+----------------------------------------
+Location: New route /calendar/[monthId]
+
+Layout:
+- "Approve All" button at the top
+- 31-day calendar grid (numbered squares 1-31)
+
+Each Calendar Square Contains:
+- Day number
+- Post title (always visible)
+- Approve/Disapprove radio buttons (always visible for title approval)
+- If post has detail (images + body):
+  * Title becomes clickable link to detail page (/approve/[campaignId])
+  * Approval here approves EVERYTHING (title + images + body)
+
+Calendar Square States:
+1. Title Only (no detail yet):
+   - Display: Title text + Approve/Disapprove radio buttons
+   - Approval: Approves just the title/topic/concept
+   - Title: NOT clickable (no link)
+
+2. Title + Detail (images and body added):
+   - Display: Title text (clickable link) + Approve/Disapprove radio buttons
+   - Approval: Approves ALL aspects (title + images + body)
+   - Title: Clickable, goes to /approve/[campaignId]
+
+Approve All Button:
+- Located at top of calendar
+- Approves all 31 posts at once
+- Works regardless of whether posts have detail or not
+
+DETAIL PAGE - /approve/[campaignId]
+-----------------------------------
+Current page stays mostly the same with these sections:
+1. Post Title (with approval)
+2. Post Images (with approval)
+3. Post Body (with approval)
+
+Note: This page only appears when a post has images and body content added.
+Approval on this page syncs with the calendar view.
+
+HOMEPAGE MODIFICATIONS
+----------------------
+Current: Single row with "Existing Posts" | "Create New Post"
+New: Two rows layout
+
+TOP ROW (New Content):
+----------------------
+1. [Create Calendar] - Left box
+   - Header: "Create Calendar"
+   - Will contain form to paste 31 titles from ChatGPT
+   - Parsing logic to split into 31 posts
+   - STUB CODE for now - placeholder UI only
+
+2. [Create Single Post] - Right box
+   - Header: "Create Single Post" (renamed from "Create New Post")
+   - Same as current "Create New Post" functionality
+   - Fields: Post Title, Post Body, Select Images
+   - Button: "Create Post"
+
+BOTTOM ROW (Existing Content):
+------------------------------
+- [Existing Posts] - Full width
+  - Same as current "Existing Campaigns" section
+  - Shows all individual posts and calendars
+  - Will need to differentiate between calendar entries and single posts
+
+DATABASE STRUCTURE
+------------------
+New Tables Needed:
+
+1. calendars table:
+   - id (UUID, primary key)
+   - name (TEXT) - e.g., "January 2025 Content"
+   - month (TEXT) - e.g., "2025-01" 
+   - created_at (TIMESTAMP)
+   - approval_completed (BOOLEAN)
+   - approval_completed_at (TIMESTAMP)
+
+2. Modify campaigns/posts tables:
+   - Add calendar_id (UUID, nullable) - links post to calendar
+   - Add day_number (INTEGER, nullable) - which day of month (1-31)
+   - Add assigned_date (DATE, nullable) - actual date when drag-drop assigns it
+   - Keep all existing fields
+
+Relationships:
+- calendars 1-to-many campaigns
+- A campaign can be standalone (calendar_id = null) or part of a calendar
+
+IDEMPOTENT SQL SCRIPT:
+- Create new file: supabase-calendar-schema.sql
+- Must be idempotent (can run multiple times safely)
+- Creates calendars table
+- Adds new columns to campaigns table
+- Includes appropriate indexes and RLS policies
+
+FUTURE FEATURES (Stub Code Placeholders)
+-----------------------------------------
+1. ChatGPT Text Parsing:
+   - User pastes 31 lines of text
+   - System parses into 31 separate post titles
+   - One title per day
+
+2. Drag & Drop Calendar:
+   - Use existing React DnD library
+   - Allow dragging posts to different days
+   - Updates assigned_date field
+   - Visual calendar representation
+
+3. Date Assignment:
+   - Flexible system to assign posts to specific dates
+   - Track which date each post was used on
+   - Recall/search by date
+
+APPROVAL LOGIC
+--------------
+Approval from Calendar View:
+- If post has NO detail: Approves only the title
+- If post HAS detail: Approves title + images + body (everything)
+- "Approve All" button: Approves all 31 posts regardless of detail status
+- All approvals sync between calendar view and detail view
+
+Approval from Detail Page:
+- Can approve title, images, body independently
+- All approvals sync back to calendar view
+- If all three are approved → calendar shows as approved
+
+IMPLEMENTATION PHASES
+---------------------
+Phase 1 (Current Sprint):
+- Create newFeatures.txt ✓
+- Create database migration script (supabase-calendar-schema.sql)
+- Modify homepage layout (2 rows)
+- Add "Create Calendar" stub
+- Rename "Create New Post" to "Create Single Post"
+- Create /calendar/[monthId] route with 31 squares
+- Implement basic calendar grid UI
+- Add approval radio buttons to each square
+- Connect approvals to database
+
+Phase 2 (Future):
+- ChatGPT text parsing implementation
+- Drag & drop functionality
+- Date assignment logic
+- Enhanced calendar navigation
+
+TECHNICAL NOTES
+---------------
+- All existing functionality must remain intact
+- Single posts still work as before
+- New calendar feature is additive
+- Calendar posts are just campaigns with calendar_id set
+- Use existing Campaign and Post interfaces, extend as needed
+- Maintain backward compatibility
+
+QUESTIONS ANSWERED:
+-------------------
+Q1: Data Structure?
+A: Add calendar_id to campaigns table, no separate content_calendar entity needed. Adapt with 31 numbered squares.
+
+Q2: Homepage Flow?
+A: Two-row layout. Top: "Create Calendar" (stub) + "Create Single Post". Bottom: "Existing Posts"
+
+Q3: Calendar Creation?
+A: Paste text from ChatGPT, parse into 31 titles. Stub code for now.
+
+Q4: Approval Behavior from Calendar?
+A: Yes, approves EVERYTHING (title + images + body) if detail exists, just title if no detail yet.
+
+Q5: Date Assignment?
+A: Flexible, user chosen. Track with assigned_date field. Drag-drop in future (stub code).
+
+Q6: Navigation?
+A: New route /calendar/[monthId]
+
+CORRECTION TO INITIAL LOGIC:
+-----------------------------
+- Calendar squares ALWAYS show approve/disapprove for the title
+- Even if no detail (images/body) exists yet, user can approve/disapprove the topic/concept
+- The difference is just whether the title is clickable (has detail) or not (no detail yet)
+
