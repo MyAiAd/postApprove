@@ -295,7 +295,7 @@ export default function CalendarPage() {
     setApproving(true)
     try {
       const campaignIds = days
-        .filter(d => d.campaign)
+        .filter(d => d.campaign && d.campaign.name !== 'blank')
         .map(d => d.campaign!.id)
 
       const { error } = await supabase
@@ -309,6 +309,62 @@ export default function CalendarPage() {
       loadCalendarData()
     } catch (error: any) {
       console.error('Error approving all:', error)
+      setMessage(`Error: ${error.message}`)
+    } finally {
+      setApproving(false)
+    }
+  }
+
+  const handleDisapproveAll = async () => {
+    if (!confirm('Are you sure you want to disapprove all posts in this calendar?')) {
+      return
+    }
+
+    setApproving(true)
+    try {
+      const campaignIds = days
+        .filter(d => d.campaign && d.campaign.name !== 'blank')
+        .map(d => d.campaign!.id)
+
+      const { error } = await supabase
+        .from('campaigns')
+        .update({ title_approved: false })
+        .in('id', campaignIds)
+
+      if (error) throw error
+
+      setMessage('All posts disapproved successfully!')
+      loadCalendarData()
+    } catch (error: any) {
+      console.error('Error disapproving all:', error)
+      setMessage(`Error: ${error.message}`)
+    } finally {
+      setApproving(false)
+    }
+  }
+
+  const handleResetAll = async () => {
+    if (!confirm('Are you sure you want to reset all approval statuses in this calendar?')) {
+      return
+    }
+
+    setApproving(true)
+    try {
+      const campaignIds = days
+        .filter(d => d.campaign && d.campaign.name !== 'blank')
+        .map(d => d.campaign!.id)
+
+      const { error } = await supabase
+        .from('campaigns')
+        .update({ title_approved: null })
+        .in('id', campaignIds)
+
+      if (error) throw error
+
+      setMessage('All approval statuses reset successfully!')
+      loadCalendarData()
+    } catch (error: any) {
+      console.error('Error resetting all:', error)
       setMessage(`Error: ${error.message}`)
     } finally {
       setApproving(false)
@@ -329,14 +385,30 @@ export default function CalendarPage() {
         <h1 className="calendar-title">{calendar.name}</h1>
         <p className="calendar-month">{calendar.month}</p>
         
-        <button
-          onClick={handleApproveAll}
-          disabled={approving}
-          className="btn"
-          style={{ marginTop: '1rem' }}
-        >
-          {approving ? 'Approving...' : '✅ Approve All'}
-        </button>
+        <div className="bulk-actions-container">
+          <button
+            onClick={handleApproveAll}
+            disabled={approving}
+            className="bulk-action-btn approve-all"
+          >
+            ✅ Approve All
+          </button>
+          <button
+            onClick={handleDisapproveAll}
+            disabled={approving}
+            className="bulk-action-btn disapprove-all"
+          >
+            ❌ Disapprove All
+          </button>
+          <button
+            onClick={handleResetAll}
+            disabled={approving}
+            className="bulk-action-btn reset-all"
+          >
+            ↺ Reset All
+          </button>
+        </div>
+        {approving && <p style={{ color: '#6b7280', marginTop: '0.5rem', fontSize: '0.9rem' }}>Processing...</p>}
       </div>
 
       {message && (
@@ -377,6 +449,55 @@ export default function CalendarPage() {
         .calendar-month {
           font-size: 1.2rem;
           color: #6b7280;
+          margin-bottom: 1rem;
+        }
+
+        .bulk-actions-container {
+          display: inline-flex;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          margin-top: 1rem;
+        }
+
+        :global(.bulk-action-btn) {
+          padding: 0.75rem 1.5rem;
+          border: none;
+          background: white;
+          color: #374151;
+          font-size: 1rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          border-right: 1px solid #e5e7eb;
+        }
+
+        :global(.bulk-action-btn:last-child) {
+          border-right: none;
+        }
+
+        :global(.bulk-action-btn:hover:not(:disabled)) {
+          background: #f3f4f6;
+        }
+
+        :global(.bulk-action-btn:disabled) {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        :global(.bulk-action-btn.approve-all:hover:not(:disabled)) {
+          background: #dcfce7;
+          color: #16a34a;
+        }
+
+        :global(.bulk-action-btn.disapprove-all:hover:not(:disabled)) {
+          background: #fee2e2;
+          color: #dc2626;
+        }
+
+        :global(.bulk-action-btn.reset-all:hover:not(:disabled)) {
+          background: #e0e7ff;
+          color: #4f46e5;
         }
 
         .calendar-grid {
