@@ -65,6 +65,9 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
   const handleApprovalChange = async (approved: boolean) => {
     if (!day.campaign) return
     
+    console.log('Changing approval for day', day.dayNumber, 'to', approved, 'campaign ID:', day.campaign.id)
+    
+    // Optimistically update UI
     setTitleApproved(approved)
     
     // Update in database
@@ -75,7 +78,10 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
     
     if (error) {
       console.error('Error updating approval:', error)
-      setTitleApproved(day.campaign.title_approved || null)
+      // Revert on error
+      setTitleApproved(day.campaign.title_approved ?? null)
+    } else {
+      console.log('Successfully updated approval for day', day.dayNumber, 'to', approved)
     }
   }
 
