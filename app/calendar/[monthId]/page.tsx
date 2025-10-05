@@ -654,7 +654,7 @@ export default function CalendarPage() {
           <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
             <div className="calendar-header">
               <h1 className="calendar-title">{calendar.name}</h1>
-              <p className="calendar-month">{calendar.month}</p>
+              <p className="calendar-month">{calendar.month} • {days.length} posts</p>
               
               <div className="bulk-actions-container">
                 <button
