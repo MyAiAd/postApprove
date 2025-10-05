@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase, Campaign } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
+import { supabase, Campaign, Calendar } from '@/lib/supabase'
 import { v4 as uuidv4 } from 'uuid'
 
 interface CampaignStats {
@@ -13,31 +14,104 @@ interface CampaignStats {
   disapprovedWithComments: any[]
 }
 
+interface CalendarStats {
+  total: number
+  approved: number
+  disapproved: number
+  pending: number
+}
+
 export default function UploadPage() {
+  const router = useRouter()
+  
+  // Single Post state
   const [campaignName, setCampaignName] = useState('')
   const [instructions, setInstructions] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
   const [campaignId, setCampaignId] = useState<string | null>(null)
+  
+  // Calendar state
+  const [calendarName, setCalendarName] = useState('')
+  const [calendarMonth, setCalendarMonth] = useState('')
+  const [calendarText, setCalendarText] = useState('')
+  const [creatingCalendar, setCreatingCalendar] = useState(false)
+  const [calendarMessage, setCalendarMessage] = useState('')
+  
+  // Data state
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [calendars, setCalendars] = useState<Calendar[]>([])
   const [loadingCampaigns, setLoadingCampaigns] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [campaignStats, setCampaignStats] = useState<Record<string, CampaignStats>>({})
+  const [calendarStats, setCalendarStats] = useState<Record<string, CalendarStats>>({})
 
   useEffect(() => {
     loadCampaigns()
+    loadCalendars()
   }, [])
+
+  const loadCalendars = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('calendars')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setCalendars(data || [])
+
+      // Load stats for each calendar
+      if (data) {
+        const statsPromises = data.map(async (calendar) => {
+          const stats = await getCalendarStats(calendar.id)
+          return { calendarId: calendar.id, stats }
+        })
+
+        const statsResults = await Promise.all(statsPromises)
+        const statsMap: Record<string, CalendarStats> = {}
+        statsResults.forEach(({ calendarId, stats }) => {
+          statsMap[calendarId] = stats
+        })
+        setCalendarStats(statsMap)
+      }
+    } catch (error: any) {
+      console.error('Error loading calendars:', error)
+    }
+  }
+
+  const getCalendarStats = async (calendarId: string) => {
+    try {
+      const { data: campaigns, error } = await supabase
+        .from('campaigns')
+        .select('title_approved')
+        .eq('calendar_id', calendarId)
+
+      if (error) throw error
+
+      const total = campaigns.length
+      const approved = campaigns.filter(c => c.title_approved === true).length
+      const disapproved = campaigns.filter(c => c.title_approved === false).length
+      const pending = campaigns.filter(c => c.title_approved === null).length
+
+      return { total, approved, disapproved, pending }
+    } catch (error) {
+      console.error('Error getting calendar stats:', error)
+      return { total: 0, approved: 0, disapproved: 0, pending: 0 }
+    }
+  }
 
   const loadCampaigns = async () => {
     try {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
+        .eq('calendar_id', null)
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setCampaigns(data)
+      setCampaigns(data || [])
 
       // Load stats for each campaign
       if (data) {
@@ -228,6 +302,109 @@ export default function UploadPage() {
     }
   }
 
+  const handleCalendarSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!calendarName.trim() || !calendarMonth.trim() || !calendarText.trim()) {
+      setCalendarMessage('Please fill in all fields.')
+      return
+    }
+
+    setCreatingCalendar(true)
+    setCalendarMessage('')
+
+    try {
+      // Parse the text into lines
+      const lines = calendarText
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+
+      if (lines.length !== 31) {
+        setCalendarMessage(`Error: Expected 31 titles, but got ${lines.length}. Please provide exactly 31 lines of text.`)
+        setCreatingCalendar(false)
+        return
+      }
+
+      // Create calendar
+      const newCalendarId = uuidv4()
+      const { error: calendarError } = await supabase
+        .from('calendars')
+        .insert({
+          id: newCalendarId,
+          name: calendarName.trim(),
+          month: calendarMonth.trim()
+        })
+
+      if (calendarError) throw calendarError
+
+      // Create 31 campaigns (posts) with titles
+      const campaignPromises = lines.map(async (title, index) => {
+        const { error: campaignError } = await supabase
+          .from('campaigns')
+          .insert({
+            id: uuidv4(),
+            calendar_id: newCalendarId,
+            day_number: index + 1,
+            name: title,
+            instructions: '', // Empty body initially
+            title_approved: null,
+            body_approved: null
+          })
+
+        if (campaignError) throw campaignError
+      })
+
+      await Promise.all(campaignPromises)
+
+      setCalendarMessage('Calendar created successfully!')
+      setCalendarName('')
+      setCalendarMonth('')
+      setCalendarText('')
+      
+      // Reload data
+      loadCalendars()
+      
+      // Redirect to calendar page
+      setTimeout(() => {
+        router.push(`/calendar/${newCalendarId}`)
+      }, 1000)
+
+    } catch (error: any) {
+      console.error('Error:', error)
+      setCalendarMessage(`Error: ${error.message}`)
+    } finally {
+      setCreatingCalendar(false)
+    }
+  }
+
+  const deleteCalendar = async (calendar: Calendar) => {
+    if (!confirm(`Are you sure you want to delete the calendar "${calendar.name}"? This will also delete all 31 associated posts and cannot be undone.`)) {
+      return
+    }
+
+    setDeleting(calendar.id)
+
+    try {
+      // Delete calendar (will cascade delete campaigns due to foreign key)
+      const { error } = await supabase
+        .from('calendars')
+        .delete()
+        .eq('id', calendar.id)
+
+      if (error) throw error
+
+      setMessage('Calendar deleted successfully!')
+      loadCalendars()
+
+    } catch (error: any) {
+      console.error('Error deleting calendar:', error)
+      setMessage(`Error deleting calendar: ${error.message}`)
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   return (
     <div className="container">
       <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '2rem', textAlign: 'center' }}>
@@ -251,20 +428,65 @@ export default function UploadPage() {
 
       {/* TOP ROW: Create Calendar and Create Single Post */}
       <div className="two-column-layout" style={{ marginBottom: '2rem' }}>
-        {/* Create Calendar Section (STUB) */}
-        <div className="upload-form column-left">
+        {/* Create Calendar Section */}
+        <form onSubmit={handleCalendarSubmit} className="upload-form column-left">
           <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
             Create Calendar
           </h2>
-          <div style={{ padding: '2rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '2px dashed #d1d5db', textAlign: 'center' }}>
-            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
-              📅 Coming Soon: Paste 31 post titles from ChatGPT
-            </p>
-            <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>
-              Stub: This feature will allow you to create a full monthly calendar with 31 posts at once.
+          
+          {calendarMessage && (
+            <div className={calendarMessage.includes('Error') ? 'error' : 'success'} style={{ marginBottom: '1rem' }}>
+              {calendarMessage}
+            </div>
+          )}
+          
+          <div className="form-group">
+            <label htmlFor="calendarName">Calendar Name:</label>
+            <input
+              type="text"
+              id="calendarName"
+              value={calendarName}
+              onChange={(e) => setCalendarName(e.target.value)}
+              placeholder="e.g., January 2025 Content"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="calendarMonth">Month (YYYY-MM):</label>
+            <input
+              type="text"
+              id="calendarMonth"
+              value={calendarMonth}
+              onChange={(e) => setCalendarMonth(e.target.value)}
+              placeholder="e.g., 2025-01"
+              pattern="\d{4}-\d{2}"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="calendarText">
+              Paste 31 Post Titles (one per line):
+            </label>
+            <textarea
+              id="calendarText"
+              value={calendarText}
+              onChange={(e) => setCalendarText(e.target.value)}
+              placeholder="Paste 31 lines of text from ChatGPT...&#10;Line 1: First post title&#10;Line 2: Second post title&#10;...&#10;Line 31: Thirty-first post title"
+              rows={10}
+              required
+              style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}
+            />
+            <p style={{ marginTop: '0.5rem', color: '#6b7280', fontSize: '0.85rem' }}>
+              {calendarText.split('\n').filter(l => l.trim()).length} / 31 titles
             </p>
           </div>
-        </div>
+
+          <button type="submit" className="btn" disabled={creatingCalendar}>
+            {creatingCalendar ? 'Creating Calendar...' : '📅 Create Calendar'}
+          </button>
+        </form>
 
         {/* Create Single Post Section */}
         <form onSubmit={handleSubmit} className="upload-form column-right">
@@ -318,17 +540,80 @@ export default function UploadPage() {
         </form>
       </div>
 
-      {/* BOTTOM ROW: Existing Posts (Full Width) */}
+      {/* BOTTOM ROW: Existing Content (Full Width) */}
       <div style={{ width: '100%' }}>
+        {/* Calendars Section */}
+        {calendars.length > 0 && (
+          <div className="upload-form" style={{ marginBottom: '2rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+              📅 Content Calendars
+            </h2>
+            <div className="campaigns-list">
+              {calendars.map((calendar) => {
+                const stats = calendarStats[calendar.id] || { 
+                  total: 0, 
+                  approved: 0, 
+                  disapproved: 0, 
+                  pending: 0 
+                }
+                return (
+                  <div key={calendar.id} className="campaign-item">
+                    <div className="campaign-info">
+                      <h3>{calendar.name}</h3>
+                      <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                        Month: {calendar.month} | Created: {new Date(calendar.created_at).toLocaleDateString()}
+                      </p>
+                      
+                      {/* Calendar Stats */}
+                      <div style={{ marginTop: '0.75rem', padding: '0.5rem', backgroundColor: '#ede9fe', borderRadius: '4px', border: '1px solid #c4b5fd' }}>
+                        <p style={{ color: '#7c3aed', fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.25rem' }}>
+                          📊 Calendar: {stats.total} posts
+                        </p>
+                        <p style={{ color: '#7c3aed', fontSize: '0.85rem' }}>
+                          Approved: {stats.approved} | Disapproved: {stats.disapproved} | Pending: {stats.pending}
+                        </p>
+                      </div>
+
+                      <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                        <span style={{ color: '#6b7280' }}>Calendar URL: </span>
+                        <a 
+                          href={`${window.location.origin}/calendar/${calendar.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ 
+                            color: '#3b82f6', 
+                            textDecoration: 'underline',
+                            wordBreak: 'break-all'
+                          }}
+                        >
+                          {window.location.origin}/calendar/{calendar.id}
+                        </a>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => deleteCalendar(calendar)}
+                      disabled={deleting === calendar.id}
+                      className="delete-btn"
+                    >
+                      {deleting === calendar.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Single Posts Section */}
         <div className="upload-form">
           <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            Existing Posts
+            📄 Individual Posts
           </h2>
           
           {loadingCampaigns ? (
             <div className="loading">Loading posts...</div>
           ) : campaigns.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No posts yet.</p>
+            <p style={{ color: '#6b7280' }}>No individual posts yet.</p>
           ) : (
             <div className="campaigns-list">
               {campaigns.map((campaign) => {
