@@ -80,13 +80,18 @@ function SidebarPostsList({ posts, collapsed, onToggle }: { posts: Campaign[]; c
         {collapsed ? '→' : '←'}
       </button>
       
-      {/* Always keep drop zone active */}
-      <div ref={setNodeRef} className="sidebar-drop-zone">
-        {collapsed && <div className="collapsed-drop-indicator">Drop here</div>}
-      </div>
+      {/* Always keep drop zone active - only visible/active when collapsed */}
+      {collapsed && (
+        <div ref={setNodeRef} className="sidebar-drop-zone">
+          <div className="collapsed-drop-indicator">Drop here</div>
+        </div>
+      )}
       
       {!collapsed && (
         <>
+          {/* Drop zone for expanded state - positioned at bottom */}
+          <div ref={setNodeRef} className="sidebar-drop-zone-expanded" />
+          
           <div className="sidebar-header">
             <h3>Tools</h3>
             <p className="sidebar-subtitle">Drag to calendar</p>
@@ -650,18 +655,25 @@ export default function CalendarPage() {
           left: 0;
           right: 0;
           bottom: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        :global(.sidebar-drop-zone-expanded) {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 100px;
           pointer-events: all;
         }
 
         :global(.collapsed-drop-indicator) {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%) rotate(-90deg);
+          transform: rotate(-90deg);
           color: #9ca3af;
           font-size: 0.7rem;
           white-space: nowrap;
-          pointer-events: none;
           user-select: none;
         }
 
