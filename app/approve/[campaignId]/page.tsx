@@ -218,6 +218,22 @@ export default function ApprovePage() {
 
   return (
     <div className="container">
+      <div style={{ marginBottom: '1rem' }}>
+        <a 
+          href="javascript:history.back()" 
+          style={{ 
+            fontSize: '0.9rem', 
+            color: '#6b7280', 
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.25rem'
+          }}
+        >
+          ← back
+        </a>
+      </div>
+
       {message && (
         <div className={message.includes('Error') ? 'error' : 'success'}>
           {message}
