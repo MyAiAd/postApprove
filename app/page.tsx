@@ -39,6 +39,15 @@ export default function UploadPage() {
   const [creatingCalendar, setCreatingCalendar] = useState(false)
   const [calendarMessage, setCalendarMessage] = useState('')
   
+  // AI Calendar state
+  const [aiCalendarName, setAiCalendarName] = useState('')
+  const [aiCalendarMonth, setAiCalendarMonth] = useState('2025-10')
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [generatingTopics, setGeneratingTopics] = useState(false)
+  const [generatedTopics, setGeneratedTopics] = useState<string[]>([])
+  const [aiCalendarMessage, setAiCalendarMessage] = useState('')
+  const [creatingAiCalendar, setCreatingAiCalendar] = useState(false)
+  
   // Helper function to get days in month
   const getDaysInMonth = (yearMonth: string): number => {
     const [year, month] = yearMonth.split('-').map(Number)
@@ -419,6 +428,154 @@ export default function UploadPage() {
     }
   }
 
+  const handleGenerateTopics = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!aiPrompt.trim()) {
+      setAiCalendarMessage('Please enter a prompt.')
+      return
+    }
+
+    // Check if API key is available
+    const apiKey = typeof window !== 'undefined' ? localStorage.getItem('openai_api_key') : null
+    if (!apiKey) {
+      setAiCalendarMessage('Error: Please configure your OpenAI API key in Settings.')
+      return
+    }
+
+    setGeneratingTopics(true)
+    setAiCalendarMessage('')
+    setGeneratedTopics([])
+
+    try {
+      const daysInMonth = getDaysInMonth(aiCalendarMonth)
+      
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a helpful assistant that creates social media content calendars. Generate exactly ${daysInMonth} post topics, one per line, numbered from 1 to ${daysInMonth}. Each topic should be concise and engaging.`
+            },
+            {
+              role: 'user',
+              content: aiPrompt
+            }
+          ],
+          temperature: 0.7
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error?.message || 'Failed to generate topics')
+      }
+
+      const data = await response.json()
+      const content = data.choices[0]?.message?.content || ''
+      
+      // Parse the topics - remove numbering if present
+      const topics = content
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(line => line.replace(/^\d+[\.\)\:]?\s*/, '')) // Remove leading numbers
+        .slice(0, daysInMonth) // Ensure we only get the right number
+
+      if (topics.length !== daysInMonth) {
+        setAiCalendarMessage(`Warning: Generated ${topics.length} topics, expected ${daysInMonth}. Proceeding with available topics.`)
+      } else {
+        setAiCalendarMessage(`Generated ${topics.length} topics successfully!`)
+      }
+
+      setGeneratedTopics(topics)
+
+    } catch (error: any) {
+      console.error('Error generating topics:', error)
+      setAiCalendarMessage(`Error: ${error.message}`)
+    } finally {
+      setGeneratingTopics(false)
+    }
+  }
+
+  const handleCreateAiCalendar = async () => {
+    if (!aiCalendarName.trim()) {
+      setAiCalendarMessage('Error: Please enter a calendar name.')
+      return
+    }
+
+    if (generatedTopics.length === 0) {
+      setAiCalendarMessage('Error: No topics generated yet.')
+      return
+    }
+
+    setCreatingAiCalendar(true)
+
+    try {
+      // Create calendar
+      const newCalendarId = uuidv4()
+      const { error: calendarError } = await supabase
+        .from('calendars')
+        .insert({
+          id: newCalendarId,
+          name: aiCalendarName.trim(),
+          month: aiCalendarMonth.trim()
+        })
+
+      if (calendarError) throw calendarError
+
+      // Create campaigns for each day
+      const daysInMonth = getDaysInMonth(aiCalendarMonth)
+      const campaignPromises = Array.from({ length: daysInMonth }, async (_, index) => {
+        const title = generatedTopics[index] || 'blank'
+        const isBlank = !generatedTopics[index]
+        
+        const { error: campaignError } = await supabase
+          .from('campaigns')
+          .insert({
+            id: uuidv4(),
+            calendar_id: newCalendarId,
+            day_number: index + 1,
+            name: title,
+            instructions: '', // Empty body initially
+            title_approved: isBlank ? true : null,
+            body_approved: isBlank ? true : null
+          })
+
+        if (campaignError) throw campaignError
+      })
+
+      await Promise.all(campaignPromises)
+
+      setAiCalendarMessage('Calendar created successfully!')
+      
+      // Clear form
+      setAiCalendarName('')
+      setAiPrompt('')
+      setGeneratedTopics([])
+      
+      // Reload data
+      loadCalendars()
+      
+      // Redirect to calendar page
+      setTimeout(() => {
+        router.push(`/calendar/${newCalendarId}`)
+      }, 1000)
+
+    } catch (error: any) {
+      console.error('Error creating calendar:', error)
+      setAiCalendarMessage(`Error: ${error.message}`)
+    } finally {
+      setCreatingAiCalendar(false)
+    }
+  }
+
   return (
     <div className="container">
       <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '2rem', textAlign: 'center' }}>
@@ -445,7 +602,7 @@ export default function UploadPage() {
         {/* Create Calendar Section */}
         <form onSubmit={handleCalendarSubmit} className="upload-form column-left">
           <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            Create Calendar
+            Create Manual Calendar
           </h2>
           
           {calendarMessage && (
@@ -565,6 +722,141 @@ export default function UploadPage() {
             {uploading ? 'Uploading...' : 'Create Post'}
           </button>
         </form>
+      </div>
+
+      {/* AI-POWERED CALENDAR CREATION */}
+      <div className="upload-form" style={{ marginBottom: '2rem' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+          🤖 AI-Powered Calendar Creation
+        </h2>
+        
+        {aiCalendarMessage && (
+          <div className={aiCalendarMessage.includes('Error') ? 'error' : 'success'} style={{ marginBottom: '1rem' }}>
+            {aiCalendarMessage}
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+          {/* Left: Generate Topics */}
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem', color: '#1f2937' }}>
+              Step 1: Generate Topics with AI
+            </h3>
+            
+            <form onSubmit={handleGenerateTopics}>
+              <div className="form-group">
+                <label htmlFor="aiCalendarMonth">Month:</label>
+                <select
+                  id="aiCalendarMonth"
+                  value={aiCalendarMonth}
+                  onChange={(e) => setAiCalendarMonth(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #d1d5db' }}
+                >
+                  <option value="2025-10">October 2025 (31 days)</option>
+                  <option value="2025-11">November 2025 (30 days)</option>
+                  <option value="2025-12">December 2025 (31 days)</option>
+                  <option value="2026-01">January 2026 (31 days)</option>
+                  <option value="2026-02">February 2026 (28 days)</option>
+                  <option value="2026-03">March 2026 (31 days)</option>
+                  <option value="2026-04">April 2026 (30 days)</option>
+                  <option value="2026-05">May 2026 (31 days)</option>
+                  <option value="2026-06">June 2026 (30 days)</option>
+                  <option value="2026-07">July 2026 (31 days)</option>
+                  <option value="2026-08">August 2026 (31 days)</option>
+                  <option value="2026-09">September 2026 (30 days)</option>
+                  <option value="2026-10">October 2026 (31 days)</option>
+                  <option value="2026-11">November 2026 (30 days)</option>
+                  <option value="2026-12">December 2026 (31 days)</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="aiPrompt">
+                  Describe your content calendar:
+                </label>
+                <textarea
+                  id="aiPrompt"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="E.g., Create a social media calendar for a fitness brand targeting millennials. Focus on workout tips, motivation, nutrition, and success stories."
+                  rows={6}
+                  required
+                />
+                <p style={{ marginTop: '0.5rem', color: '#6b7280', fontSize: '0.85rem' }}>
+                  ChatGPT will generate {getDaysInMonth(aiCalendarMonth)} post topics based on your prompt.
+                </p>
+              </div>
+
+              <button type="submit" className="btn" disabled={generatingTopics}>
+                {generatingTopics ? '🔄 Generating...' : '✨ Generate Topics'}
+              </button>
+            </form>
+          </div>
+
+          {/* Right: Preview and Create */}
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem', color: '#1f2937' }}>
+              Step 2: Review & Create Calendar
+            </h3>
+            
+            {generatedTopics.length > 0 ? (
+              <>
+                <div className="form-group">
+                  <label htmlFor="aiCalendarName">Calendar Name:</label>
+                  <input
+                    type="text"
+                    id="aiCalendarName"
+                    value={aiCalendarName}
+                    onChange={(e) => setAiCalendarName(e.target.value)}
+                    placeholder="e.g., January 2026 AI Calendar"
+                  />
+                </div>
+
+                <div style={{ 
+                  maxHeight: '300px', 
+                  overflowY: 'auto', 
+                  border: '1px solid #d1d5db', 
+                  borderRadius: '4px', 
+                  padding: '1rem',
+                  backgroundColor: '#f9fafb',
+                  marginBottom: '1rem'
+                }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem', color: '#6b7280' }}>
+                    Generated Topics ({generatedTopics.length}):
+                  </h4>
+                  <ol style={{ paddingLeft: '1.5rem', margin: 0 }}>
+                    {generatedTopics.map((topic, index) => (
+                      <li key={index} style={{ fontSize: '0.85rem', marginBottom: '0.25rem', color: '#374151' }}>
+                        {topic}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                <button 
+                  onClick={handleCreateAiCalendar} 
+                  className="btn" 
+                  disabled={creatingAiCalendar || !aiCalendarName.trim()}
+                  style={{ width: '100%' }}
+                >
+                  {creatingAiCalendar ? 'Creating Calendar...' : '📅 Create Calendar'}
+                </button>
+              </>
+            ) : (
+              <div style={{ 
+                padding: '2rem', 
+                textAlign: 'center', 
+                color: '#9ca3af',
+                border: '2px dashed #e5e7eb',
+                borderRadius: '8px'
+              }}>
+                <p style={{ fontSize: '3rem', margin: '0 0 0.5rem 0' }}>💡</p>
+                <p>Generate topics first to see them here</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* BOTTOM ROW: Existing Content (Full Width) */}

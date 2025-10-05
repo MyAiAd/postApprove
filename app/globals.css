@@ -324,13 +324,15 @@ body {
 .two-column-layout {
   display: flex;
   gap: 2rem;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .column-left,
 .column-right {
   flex: 1;
   min-width: 0; /* Prevents flex items from overflowing */
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 768px) {
