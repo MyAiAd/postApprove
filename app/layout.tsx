@@ -6,6 +6,9 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'PostApprove - Social Media Post Approval System',
   description: 'Simple social media post approval system for client campaigns',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({
