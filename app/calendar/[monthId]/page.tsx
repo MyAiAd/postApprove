@@ -39,7 +39,12 @@ function BlankDayCard() {
     isDragging,
   } = useSortable({ 
     id: 'blank-template',
-    disabled: false
+    disabled: false,
+    // Don't allow dropping on the blank template
+    data: {
+      type: 'blank-template',
+      accepts: [] // Don't accept any drops
+    }
   })
 
   const style = {
@@ -398,7 +403,8 @@ export default function CalendarPage() {
     const overCalendarIndex = days.findIndex(d => 
       d.campaign?.id === overId || `empty-${d.dayNumber}` === overId
     )
-    const overIsSidebar = overId === 'sidebar'
+    // Treat drops on 'sidebar' or 'blank-template' as dropping on sidebar
+    const overIsSidebar = overId === 'sidebar' || overId === 'blank-template'
     
     // Blank template -> Calendar day (insert and shift right)
     if (activeId === 'blank-template' && overCalendarIndex !== -1) {
