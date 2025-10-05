@@ -174,8 +174,6 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
             {day.hasDetail ? (
               <a
                 href={`/approve/${day.campaign.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="calendar-post-title-link"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -551,6 +549,7 @@ export default function CalendarPage() {
           background: #f9fafb;
           border-right: 1px solid #e5e7eb;
           padding: 1.5rem;
+          padding-top: 5rem;
           overflow-y: auto;
           position: fixed;
           height: 100vh;
