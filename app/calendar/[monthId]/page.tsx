@@ -28,7 +28,7 @@ interface CalendarDay {
 }
 
 // Sortable Calendar Square Component
-function CalendarSquare({ day }: { day: CalendarDay }) {
+function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: string }) {
   const {
     attributes,
     listeners,
@@ -89,7 +89,7 @@ function CalendarSquare({ day }: { day: CalendarDay }) {
           // Blank campaign - show clickable "blank" text, no approval buttons
           <div className="calendar-post-content">
             <a
-              href={`/calendar/${monthId}/add/${day.dayNumber}`}
+              href={`/calendar/${calendarId}/add/${day.dayNumber}`}
               className="calendar-blank-link"
               onClick={(e) => e.stopPropagation()}
             >
@@ -337,7 +337,7 @@ export default function CalendarPage() {
         >
           <div className="calendar-grid">
             {days.map((day) => (
-              <CalendarSquare key={day.dayNumber} day={day} />
+              <CalendarSquare key={day.dayNumber} day={day} calendarId={monthId} />
             ))}
           </div>
         </SortableContext>
