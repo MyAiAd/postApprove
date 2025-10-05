@@ -245,6 +245,10 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
                 blank
               </a>
               <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
                 onClick={async (e) => {
                   e.stopPropagation()
                   if (confirm('Delete this blank? Posts after it will shift left.')) {
@@ -313,6 +317,10 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
               </div>
               
               <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
                 onClick={async (e) => {
                   e.stopPropagation()
                   if (confirm(`Permanently delete "${day.campaign!.name}"? This will shift all posts after it left.`)) {
