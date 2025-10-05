@@ -47,6 +47,11 @@ function CalendarSquare({ day }: { day: CalendarDay }) {
     transition,
     opacity: isDragging ? 0.5 : 1,
   }
+  
+  // Only apply drag listeners to squares with campaigns
+  // Empty squares can receive drops but can't be dragged
+  // (they have no database record to persist position changes)
+  const dragHandlers = day.campaign ? listeners : {}
 
   const [titleApproved, setTitleApproved] = useState<boolean | null>(
     day.campaign?.title_approved || null
@@ -75,49 +80,63 @@ function CalendarSquare({ day }: { day: CalendarDay }) {
       style={style}
       className="calendar-square"
       {...attributes}
-      {...listeners}
+      {...dragHandlers}
     >
       <div className="calendar-day-number">{day.dayNumber}</div>
       
       {day.campaign ? (
-        <div className="calendar-post-content">
-          {day.hasDetail ? (
+        day.campaign.name === 'blank' ? (
+          // Blank campaign - show clickable "blank" text, no approval buttons
+          <div className="calendar-post-content">
             <a
-              href={`/approve/${day.campaign.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="calendar-post-title-link"
+              href={`/calendar/${monthId}/add/${day.dayNumber}`}
+              className="calendar-blank-link"
               onClick={(e) => e.stopPropagation()}
             >
-              {day.campaign.name}
+              blank
             </a>
-          ) : (
-            <div className="calendar-post-title">
-              {day.campaign.name}
-            </div>
-          )}
-          
-          <div className="calendar-approval-buttons">
-            <label className="calendar-radio-label" onClick={(e) => e.stopPropagation()}>
-              <input
-                type="radio"
-                name={`approval-${day.campaign.id}`}
-                checked={titleApproved === true}
-                onChange={() => handleApprovalChange(true)}
-              />
-              <span>✅</span>
-            </label>
-            <label className="calendar-radio-label" onClick={(e) => e.stopPropagation()}>
-              <input
-                type="radio"
-                name={`approval-${day.campaign.id}`}
-                checked={titleApproved === false}
-                onChange={() => handleApprovalChange(false)}
-              />
-              <span>❌</span>
-            </label>
           </div>
-        </div>
+        ) : (
+          // Regular campaign with content
+          <div className="calendar-post-content">
+            {day.hasDetail ? (
+              <a
+                href={`/approve/${day.campaign.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="calendar-post-title-link"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {day.campaign.name}
+              </a>
+            ) : (
+              <div className="calendar-post-title">
+                {day.campaign.name}
+              </div>
+            )}
+            
+            <div className="calendar-approval-buttons">
+              <label className="calendar-radio-label" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="radio"
+                  name={`approval-${day.campaign.id}`}
+                  checked={titleApproved === true}
+                  onChange={() => handleApprovalChange(true)}
+                />
+                <span>✅</span>
+              </label>
+              <label className="calendar-radio-label" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="radio"
+                  name={`approval-${day.campaign.id}`}
+                  checked={titleApproved === false}
+                  onChange={() => handleApprovalChange(false)}
+                />
+                <span>❌</span>
+              </label>
+            </div>
+          </div>
+        )
       ) : (
         <div className="calendar-empty">
           <span style={{ color: '#d1d5db', fontSize: '0.8rem' }}>Empty</span>
@@ -437,6 +456,19 @@ export default function CalendarPage() {
           display: flex;
           align-items: center;
           justify-content: center;
+        }
+
+        :global(.calendar-blank-link) {
+          color: #9ca3af;
+          font-style: italic;
+          font-size: 0.85rem;
+          text-decoration: none;
+          cursor: pointer;
+        }
+
+        :global(.calendar-blank-link:hover) {
+          color: #6b7280;
+          text-decoration: underline;
         }
       `}</style>
     </div>

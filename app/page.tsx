@@ -93,15 +93,17 @@ export default function UploadPage() {
     try {
       const { data: campaigns, error } = await supabase
         .from('campaigns')
-        .select('title_approved')
+        .select('title_approved, name')
         .eq('calendar_id', calendarId)
 
       if (error) throw error
 
-      const total = campaigns.length
-      const approved = campaigns.filter(c => c.title_approved === true).length
-      const disapproved = campaigns.filter(c => c.title_approved === false).length
-      const pending = campaigns.filter(c => c.title_approved === null).length
+      // Exclude "blank" campaigns from stats
+      const realCampaigns = campaigns.filter(c => c.name !== 'blank')
+      const total = realCampaigns.length
+      const approved = realCampaigns.filter(c => c.title_approved === true).length
+      const disapproved = realCampaigns.filter(c => c.title_approved === false).length
+      const pending = realCampaigns.filter(c => c.title_approved === null).length
 
       return { total, approved, disapproved, pending }
     } catch (error) {
@@ -328,9 +330,9 @@ export default function UploadPage() {
         .map(line => line.trim())
         .filter(line => line.length > 0)
 
-      const daysInMonth = getDaysInMonth(calendarMonth)
-      if (lines.length !== daysInMonth) {
-        setCalendarMessage(`Error: Expected ${daysInMonth} titles for ${calendarMonth}, but got ${lines.length}. Please provide exactly ${daysInMonth} lines of text.`)
+      // Allow 1-31 titles, fill the rest with "blank"
+      if (lines.length > 31) {
+        setCalendarMessage(`Error: Too many titles (${lines.length}). Maximum is 31.`)
         setCreatingCalendar(false)
         return
       }
@@ -347,8 +349,11 @@ export default function UploadPage() {
 
       if (calendarError) throw calendarError
 
-      // Create campaigns (posts) with titles for each day of the month
-      const campaignPromises = lines.map(async (title, index) => {
+      // Create 31 campaigns - use provided titles or "blank"
+      const campaignPromises = Array.from({ length: 31 }, async (_, index) => {
+        const title = lines[index] || 'blank'
+        const isBlank = !lines[index]
+        
         const { error: campaignError } = await supabase
           .from('campaigns')
           .insert({
@@ -357,8 +362,8 @@ export default function UploadPage() {
             day_number: index + 1,
             name: title,
             instructions: '', // Empty body initially
-            title_approved: null,
-            body_approved: null
+            title_approved: isBlank ? true : null, // Auto-approve blanks
+            body_approved: isBlank ? true : null
           })
 
         if (campaignError) throw campaignError
@@ -490,19 +495,18 @@ export default function UploadPage() {
 
           <div className="form-group">
             <label htmlFor="calendarText">
-              Paste {expectedDays} Post Titles (one per line):
+              Paste Post Titles (one per line, 1-31 titles):
             </label>
             <textarea
               id="calendarText"
               value={calendarText}
               onChange={(e) => setCalendarText(e.target.value)}
-              placeholder={`Paste ${expectedDays} lines of text from ChatGPT...\nLine 1: First post title\nLine 2: Second post title\n...\nLine ${expectedDays}: ${expectedDays === 28 ? 'Twenty-eighth' : expectedDays === 29 ? 'Twenty-ninth' : expectedDays === 30 ? 'Thirtieth' : 'Thirty-first'} post title`}
+              placeholder={`Paste up to 31 lines of text from ChatGPT...\nLine 1: First post title\nLine 2: Second post title\n...\n\nRemaining days will be marked as "blank" and can be filled in later.`}
               rows={10}
-              required
               style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}
             />
             <p style={{ marginTop: '0.5rem', color: '#6b7280', fontSize: '0.85rem' }}>
-              {calendarText.split('\n').filter(l => l.trim()).length} / {expectedDays} titles
+              {calendarText.split('\n').filter(l => l.trim()).length} titles entered (blank days will be auto-filled)
             </p>
           </div>
 
