@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { supabase, Calendar, Campaign, Post } from '@/lib/supabase'
+import { supabase, Calendar, Campaign } from '@/lib/supabase'
 import {
   DndContext,
   closestCenter,
@@ -56,6 +56,11 @@ function CalendarSquare({ day, calendarId }: { day: CalendarDay; calendarId: str
   const [titleApproved, setTitleApproved] = useState<boolean | null>(
     day.campaign?.title_approved ?? null
   )
+
+  // Sync state with prop changes
+  useEffect(() => {
+    setTitleApproved(day.campaign?.title_approved ?? null)
+  }, [day.campaign?.title_approved])
 
   const handleApprovalChange = async (approved: boolean) => {
     if (!day.campaign) return
